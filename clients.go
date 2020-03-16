@@ -43,14 +43,14 @@ type ClientsService struct {
 	client   *Client
 }
 
-func (c ClientsService) Create(ctx context.Context, client Client) (Client, error) {
+func (c ClientsService) Create(ctx context.Context, client APIClient) (APIClient, error) {
 	// TODO: create a client
-	return Client{}, errors.New("not implemented yet")
+	return APIClient{}, errors.New("not implemented yet")
 }
 
-func (c ClientsService) Get(ctx context.Context, id string) (Client, error) {
+func (c ClientsService) Get(ctx context.Context, id string) (APIClient, error) {
 	// TODO: retrieve a client
-	return Client{}, errors.New("not implemented yet")
+	return APIClient{}, errors.New("not implemented yet")
 }
 
 func (c ClientsService) Delete(ctx context.Context, id string) error {
@@ -58,9 +58,9 @@ func (c ClientsService) Delete(ctx context.Context, id string) error {
 	return errors.New("not implemented yet")
 }
 
-func (c ClientsService) ResetSecret(ctx context.Context, id string) (Client, error) {
+func (c ClientsService) ResetSecret(ctx context.Context, id string) (APIClient, error) {
 	// TODO: reset a client's secret
-	return Client{}, errors.New("not implemented yet")
+	return APIClient{}, errors.New("not implemented yet")
 }
 
 func (c ClientsService) ListRedirectURIs(ctx context.Context, id string) ([]RedirectURI, error) {
