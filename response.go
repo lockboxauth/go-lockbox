@@ -2,6 +2,7 @@ package lockbox
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -21,6 +22,13 @@ const (
 
 var (
 	serverError = RequestError{Slug: requestErrActOfGod}
+)
+
+var (
+	// ErrServerError is returned when a server error is encountered while
+	// making a request. Users typically can't do anything about these, and
+	// they should be reported as bugs.
+	ErrServerError = errors.New("server error")
 )
 
 // Response is the standard response format we get back from every service,
@@ -85,4 +93,9 @@ func (e RequestErrors) Contains(err RequestError) bool {
 		}
 	}
 	return false
+}
+
+func jsonRequest(r *http.Request) {
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Accept", "application/json")
 }

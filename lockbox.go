@@ -236,7 +236,12 @@ func (c Client) NewRequest(ctx context.Context, method, path string, body io.Rea
 		return nil, fmt.Errorf("error parsing path: %w", err)
 	}
 	reqURL := c.baseURL.ResolveReference(u)
-	return http.NewRequestWithContext(ctx, method, reqURL.String(), body)
+	req, err := http.NewRequestWithContext(ctx, method, reqURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "go-lockbox/"+version)
+	return req, nil
 }
 
 // AddClientCredentials adds the configured client credentials to `r`,

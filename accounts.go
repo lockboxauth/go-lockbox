@@ -60,12 +60,28 @@ func (a AccountsService) Create(ctx context.Context, account Account) error {
 			return err
 		}
 	}
-	_, err = a.client.Do(req)
+	jsonRequest(req)
+	res, err := a.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("error making request: %w", err)
 	}
-	// TODO: check response code and return errors
-	return errors.New("not yet implemented")
+	resp, err := responseFromBody(res)
+	if err != nil {
+		return err
+	}
+
+	// standard checks
+	if resp.Errors.Contains(serverError) {
+		return ErrServerError
+	}
+	// TODO: check for ErrInvalidFormat, Field "/"
+	// TODO: check for ErrAccessDenied, Header "Authorization"
+
+	// req specific checks
+	// TODO: check for ErrMissing, Field "/id"
+	// TODO: check for ErrMissing, Field "/profileID"
+	// TODO: check for ErrConflict, Field "/id"
+	return nil
 }
 
 // Get retrieves the Account specified by `id` from the accounts service. The
@@ -80,6 +96,7 @@ func (a AccountsService) Get(ctx context.Context, id string) (Account, error) {
 	if err != nil {
 		return Account{}, err
 	}
+	jsonRequest(req)
 	_, err = a.client.Do(req)
 	if err != nil {
 		return Account{}, fmt.Errorf("error making request: %w", err)
@@ -102,6 +119,7 @@ func (a AccountsService) ListByProfileID(ctx context.Context, profileID string) 
 	if err != nil {
 		return nil, err
 	}
+	jsonRequest(req)
 	_, err = a.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error making request: %w", err)
@@ -121,6 +139,7 @@ func (a AccountsService) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
+	jsonRequest(req)
 	_, err = a.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("error making request: %w", err)
