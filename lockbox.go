@@ -10,10 +10,13 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
+	"sync"
 	"time"
 
 	"lockbox.dev/hmac"
+	"yall.in"
 
 	"github.com/hashicorp/go-cleanhttp"
 )
@@ -88,8 +91,9 @@ var (
 // Client is an HTTP client that can make requests against Lockbox's various
 // services and the services that use Lockbox for authentication.
 type Client struct {
-	client  *http.Client
-	baseURL *url.URL
+	client    *http.Client
+	transport *loggingTransport
+	baseURL   *url.URL
 
 	clientID          string
 	clientSecret      string
@@ -154,6 +158,44 @@ type ClientCredentials struct {
 	RedirectURI string
 }
 
+type loggingTransport struct {
+	active bool
+	t      http.RoundTripper
+	log    *yall.Logger
+	mu     sync.RWMutex
+}
+
+func (l *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	var active bool
+	l.mu.RLock()
+	active = l.active
+	l.mu.RUnlock()
+
+	if active {
+		reqBody, err := httputil.DumpRequestOut(req, true)
+		if err != nil {
+			l.log.WithError(err).Error("error dumping request")
+		} else {
+			l.log.WithField("request", reqBody).Debug("making request")
+		}
+	}
+	resp, err := l.t.RoundTrip(req)
+	if err != nil {
+		return resp, err
+	}
+
+	if active {
+		respData, err := httputil.DumpResponse(resp, true)
+		if err != nil {
+			l.log.WithError(err).Error("error dumping response")
+		} else {
+			l.log.WithField("response", respData).Debug("got response")
+		}
+	}
+
+	return resp, nil
+}
+
 // Apply configures the Client `c` with the client ID, client secret, and
 // redirect URI set on `creds`.
 func (creds ClientCredentials) Apply(c *Client) {
@@ -178,7 +220,7 @@ func (h HMACCredentials) Apply(c *Client) {
 // The baseURL specified should point to the URL that lockbox-apid is serving
 // at. Any number of AuthMethods can be passed to configure the client,
 // including none.
-func NewClient(baseURL string, auth ...AuthMethod) (*Client, error) {
+func NewClient(ctx context.Context, baseURL string, auth ...AuthMethod) (*Client, error) {
 	base, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing baseURL: %w", err)
@@ -187,6 +229,12 @@ func NewClient(baseURL string, auth ...AuthMethod) (*Client, error) {
 		client:  cleanhttp.DefaultPooledClient(),
 		baseURL: base,
 	}
+
+	c.transport = &loggingTransport{
+		log: yall.FromContext(ctx),
+		t:   c.client.Transport,
+	}
+	c.client.Transport = c.transport
 	for _, method := range auth {
 		method.Apply(c)
 	}
@@ -221,6 +269,15 @@ func (c *Client) RefreshTokens(ctx context.Context) error {
 	}
 	// TODO: refresh the tokens
 	return nil
+}
+
+// EnableLogs turns on request and response logging for the client, for
+// debugging purposes. This should probably not be called in production, as
+// sensitive values will be logged.
+func (c *Client) EnableLogs() {
+	c.transport.mu.Lock()
+	defer c.transport.mu.Unlock()
+	c.transport.active = true
 }
 
 // Do executes an *http.Request using the *http.Client associated with `c`.

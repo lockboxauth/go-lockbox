@@ -2,3 +2,5 @@ github.com/hashicorp/go-cleanhttp v0.5.1 h1:dH3aiDG9Jvb5r5+bYHsikaOUIpcM0xvgMXVo
 github.com/hashicorp/go-cleanhttp v0.5.1/go.mod h1:JpRdi6/HCYpAwUzNwuwqhbovhLtngrth3wmdIIUrZ80=
 lockbox.dev/hmac v0.1.0 h1:zVp34Ov7p8fESeE4aHM5p07FulilN6IY1SO0YX6gO+Y=
 lockbox.dev/hmac v0.1.0/go.mod h1:4s83OfmK63Y9l4pKjEv1fezObEVam6xcgqDJdPIQdtM=
+yall.in v0.0.1 h1:oQkgnFIY1GmRmWLXjat+Lt8KE/yD3PbEYP7lt71utpo=
+yall.in v0.0.1/go.mod h1:sihZtLjLdINMcMiqCZ6juYVK9XuWt1RaMwGnwGlK1ag=
