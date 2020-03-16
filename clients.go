@@ -21,25 +21,25 @@ const (
 // consumer that can make requests against Lockbox and the APIs it is
 // authenticating for.
 type APIClient struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
+	ID           string    `json:"id,omitempty"`
+	Name         string    `json:"name,omitempty"`
 	Confidential bool      `json:"confidential"`
-	CreatedAt    time.Time `json:"createdAt"`
-	CreatedBy    string    `json:"createdBy"`
-	CreatedByIP  string    `json:"createdByIP"`
-	Secret       string    `json:"secret,omitempty"`
+	CreatedAt    time.Time `json:"createdAt,omitempty"`
+	CreatedBy    string    `json:"createdBy,omitempty"`
+	CreatedByIP  string    `json:"createdByIP,omitempty"`
+	Secret       string    `json:"secret,omitempty,omitempty"`
 }
 
 // RedirectURI is a URI that is registered to an APIClient as a URI that can be
 // redirected to during the OAuth2 flow.
 type RedirectURI struct {
-	ID          string    `json:"ID"`
-	URI         string    `json:"URI"`
+	ID          string    `json:"ID,omitempty"`
+	URI         string    `json:"URI,omitempty"`
 	IsBaseURI   bool      `json:"isBaseURI"`
-	ClientID    string    `json:"clientID"`
-	CreatedAt   time.Time `json:"createdAt"`
-	CreatedBy   string    `json:"createdBy"`
-	CreatedByIP string    `json:"createdByIP"`
+	ClientID    string    `json:"clientID,omitempty"`
+	CreatedAt   time.Time `json:"createdAt,omitempty"`
+	CreatedBy   string    `json:"createdBy,omitempty"`
+	CreatedByIP string    `json:"createdByIP,omitempty"`
 }
 
 // ClientsService is the clients service. Set the BasePath to modify where

@@ -27,10 +27,10 @@ var (
 // Account is an Account from the accounts service. It represents a login
 // method available to a user.
 type Account struct {
-	ID             string    `json:"id"`
-	ProfileID      string    `json:"profileID"`
+	ID             string    `json:"id,omitempty"`
+	ProfileID      string    `json:"profileID,omitempty"`
 	IsRegistration bool      `json:"isRegistration"`
-	CreatedAt      time.Time `json:"createdAt"`
+	CreatedAt      time.Time `json:"createdAt,omitempty"`
 	LastSeenAt     time.Time `json:"lastSeenAt,omitempty"`
 	LastUsedAt     time.Time `json:"lastUsedAt,omitempty"`
 }

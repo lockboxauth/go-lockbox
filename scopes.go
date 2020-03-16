@@ -12,20 +12,20 @@ const (
 // Scope is a permission from the scopes service. It can be attached to a
 // session to authorize access to resources.
 type Scope struct {
-	ID               string   `json:"id"`
-	UserPolicy       string   `json:"userPolicy"`
-	UserExceptions   []string `json:"userExceptions"`
-	ClientPolicy     string   `json:"clientPolicy"`
-	ClientExceptions []string `json:"clientExceptions"`
+	ID               string   `json:"id,omitempty"`
+	UserPolicy       string   `json:"userPolicy,omitempty"`
+	UserExceptions   []string `json:"userExceptions,omitempty"`
+	ClientPolicy     string   `json:"clientPolicy,omitempty"`
+	ClientExceptions []string `json:"clientExceptions,omitempty"`
 	IsDefault        bool     `json:"isDefault"`
 }
 
 type ScopeChange struct {
-	UserPolicy       *string   `json:"userPolicy"`
-	UserExceptions   *[]string `json:"userExceptions"`
-	ClientPolicy     *string   `json:"clientPolicy"`
-	ClientExceptions *[]string `json:"clientExceptions"`
-	IsDefault        *bool     `json:"isDefault"`
+	UserPolicy       *string   `json:"userPolicy,omitempty"`
+	UserExceptions   *[]string `json:"userExceptions,omitempty"`
+	ClientPolicy     *string   `json:"clientPolicy,omitempty"`
+	ClientExceptions *[]string `json:"clientExceptions,omitempty"`
+	IsDefault        *bool     `json:"isDefault,omitempty"`
 }
 
 // ScopesService is the scopes service. Set the BasePath to modify where
