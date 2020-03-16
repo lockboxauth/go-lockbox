@@ -176,7 +176,7 @@ func (l *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 		if err != nil {
 			l.log.WithError(err).Error("error dumping request")
 		} else {
-			l.log.WithField("request", reqBody).Debug("making request")
+			l.log.WithField("request", string(reqBody)).Debug("making request")
 		}
 	}
 	resp, err := l.t.RoundTrip(req)
@@ -189,7 +189,7 @@ func (l *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 		if err != nil {
 			l.log.WithError(err).Error("error dumping response")
 		} else {
-			l.log.WithField("response", respData).Debug("got response")
+			l.log.WithField("response", string(respData)).Debug("got response")
 		}
 	}
 
