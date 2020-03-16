@@ -59,6 +59,26 @@ var (
 	// HMAC key
 	ErrNoClientsHMACKeySet = errors.New("no HMAC key for the clients service set")
 
+	// ErrNoScopesHMACSecretSet is returned when the Client tries to make
+	// an HMAC request to the scopes service but is not configured with an
+	// HMAC secret
+	ErrNoScopesHMACSecretSet = errors.New("no HMAC secret for the scopes service set")
+
+	// ErrNoScopesHMACMaxSkewSet is returned when the Client tries to make
+	// an HMAC request to the scopes service but is not configured with an
+	// HMAC max skew
+	ErrNoScopesHMACMaxSkewSet = errors.New("no HMAC max skew for the scopes service set")
+
+	// ErrNoScopesHMACOrgKeySet is returned when the Client tries to make
+	// an HMAC request to the scopes service but is not configured with an
+	// HMAC org key
+	ErrNoScopesHMACOrgKeySet = errors.New("no HMAC org key for the scopes service set")
+
+	// ErrNoScopesHMACKeySet is returned when the Client tries to make an
+	// HMAC request to the scopes service but is not configured with an
+	// HMAC key
+	ErrNoScopesHMACKeySet = errors.New("no HMAC key for the scopes service set")
+
 	// ErrBothClientSecretAndRedirectURISet is return when the Client tries
 	// to make a request using client credentials and both the redirect URI
 	// and client secret are set
@@ -83,6 +103,7 @@ type Client struct {
 
 type hmacAuths struct {
 	clients HMACAuth
+	scopes  HMACAuth
 }
 
 // HMACAuth contains all the information necessary to authenticate against an
@@ -140,6 +161,7 @@ func (creds ClientCredentials) Apply(c *Client) {
 // authenticate against HMAC-secured endpoints, like the clients service.
 type HMACCredentials struct {
 	Clients HMACAuth
+	Scopes  HMACAuth
 }
 
 // Apply configures the Client `c` with the HMAC credentials set in `h`.
@@ -241,6 +263,28 @@ func (c Client) MakeClientsHMACRequest(r *http.Request) error {
 	if c.hmacs.clients.Key == "" {
 		return ErrNoClientsHMACKeySet
 	}
+	return c.makeHMACRequest(r, c.hmacs.clients)
+}
+
+// MakeScopesHMACRequest signs an *http.Request so it can be executed against
+// the Scopes service.
+func (c Client) MakeScopesHMACRequest(r *http.Request) error {
+	if len(c.hmacs.scopes.Secret) == 0 {
+		return ErrNoScopesHMACSecretSet
+	}
+	if c.hmacs.scopes.MaxSkew == 0 {
+		return ErrNoScopesHMACMaxSkewSet
+	}
+	if c.hmacs.scopes.OrgKey == "" {
+		return ErrNoScopesHMACOrgKeySet
+	}
+	if c.hmacs.scopes.Key == "" {
+		return ErrNoScopesHMACKeySet
+	}
+	return c.makeHMACRequest(r, c.hmacs.scopes)
+}
+
+func (c Client) makeHMACRequest(r *http.Request, auth HMACAuth) error {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return fmt.Errorf("error reading request body: %w", err)
@@ -248,10 +292,10 @@ func (c Client) MakeClientsHMACRequest(r *http.Request) error {
 	buf := bytes.NewBuffer(body)
 	r.Body = ioutil.NopCloser(buf)
 	signer := hmac.Signer{
-		Secret:  []byte(c.hmacs.clients.Secret),
-		MaxSkew: c.hmacs.clients.MaxSkew,
-		OrgKey:  c.hmacs.clients.OrgKey,
-		Key:     c.hmacs.clients.Key,
+		Secret:  []byte(auth.Secret),
+		MaxSkew: auth.MaxSkew,
+		OrgKey:  auth.OrgKey,
+		Key:     auth.Key,
 	}
 	r.Header.Set("Date", time.Now().Format(time.RFC1123))
 	r.Header.Set("Content-SHA256", base64.StdEncoding.EncodeToString(sha256.New().Sum(buf.Bytes())))
