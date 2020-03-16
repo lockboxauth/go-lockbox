@@ -21,7 +21,8 @@ const (
 )
 
 var (
-	serverError = RequestError{Slug: requestErrActOfGod}
+	serverError        = RequestError{Slug: requestErrActOfGod}
+	invalidFormatError = RequestError{Slug: requestErrInvalidFormat, Field: "/"}
 )
 
 var (
@@ -29,6 +30,22 @@ var (
 	// making a request. Users typically can't do anything about these, and
 	// they should be reported as bugs.
 	ErrServerError = errors.New("server error")
+
+	// ErrInvalidFormatError is returned when the server couldn't parse
+	// the request as made. Users typically can't do anything about these,
+	// and they should be reported as bugs against go-lockbox.
+	ErrInvalidFormatError = errors.New("invalid request")
+
+	// ErrUnauthorized is returned when a request is made that the Client
+	// is not authorized to make. Check the credentials and try again.
+	ErrUnauthorized = errors.New("unauthorized request")
+
+	// ErrUnexpectedError is returned when a RequestError is returned in a
+	// Response that the cliente doesn't know how to handle. This is
+	// usually indicative of a bug in go-lockbox and an issue whould be
+	// filed about it. The logs can provide more information on what the
+	// error is.
+	ErrUnexpectedError = errors.New("unexpected error in response")
 )
 
 // Response is the standard response format we get back from every service,

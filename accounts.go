@@ -10,10 +10,18 @@ import (
 	"net/url"
 	"path"
 	"time"
+
+	"yall.in"
 )
 
 const (
 	accountsServiceDefaultBasePath = "/accounts/v1/"
+)
+
+var (
+	ErrAccountRequestMissingID        = errors.New("request must have the ID set")
+	ErrAccountRequestMissingProfileID = errors.New("request must have the ProfileID set")
+	ErrAccountAlreadyRegistered       = errors.New("that account has already been registered")
 )
 
 // Account is an Account from the accounts service. It represents a login
@@ -44,44 +52,72 @@ func (a AccountsService) buildURL(p string) string {
 // must be set. ProfileID cannot be set while IsRegistration is true. If
 // ProfileID is set, the request will be authenticated with the token
 // credentials configured on the Client.
-func (a AccountsService) Create(ctx context.Context, account Account) error {
+func (a AccountsService) Create(ctx context.Context, account Account) (Account, error) {
 	b, err := json.Marshal(account)
 	if err != nil {
-		return fmt.Errorf("error serialising account: %w", err)
+		return Account{}, fmt.Errorf("error serialising account: %w", err)
 	}
 	buf := bytes.NewBuffer(b)
 	req, err := a.client.NewRequest(ctx, http.MethodPost, a.buildURL("/"), buf)
 	if err != nil {
-		return fmt.Errorf("error constructing request: %w", err)
+		return Account{}, fmt.Errorf("error constructing request: %w", err)
 	}
 	if account.ProfileID != "" {
 		err = a.client.AddTokenCredentials(req)
 		if err != nil {
-			return err
+			return Account{}, err
 		}
 	}
 	jsonRequest(req)
 	res, err := a.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("error making request: %w", err)
+		return Account{}, fmt.Errorf("error making request: %w", err)
 	}
 	resp, err := responseFromBody(res)
 	if err != nil {
-		return err
+		return Account{}, err
 	}
 
 	// standard checks
 	if resp.Errors.Contains(serverError) {
-		return ErrServerError
+		return Account{}, ErrServerError
 	}
-	// TODO: check for ErrInvalidFormat, Field "/"
-	// TODO: check for ErrAccessDenied, Header "Authorization"
+	if resp.Errors.Contains(invalidFormatError) {
+		return Account{}, ErrInvalidFormatError
+	}
+	if resp.Errors.Contains(RequestError{
+		Slug:   requestErrAccessDenied,
+		Header: "Authorization",
+	}) {
+		return Account{}, ErrUnauthorized
+	}
 
 	// req specific checks
-	// TODO: check for ErrMissing, Field "/id"
-	// TODO: check for ErrMissing, Field "/profileID"
-	// TODO: check for ErrConflict, Field "/id"
-	return nil
+	if resp.Errors.Contains(RequestError{
+		Slug:  requestErrMissing,
+		Field: "/id",
+	}) {
+		return Account{}, ErrAccountRequestMissingID
+	}
+	if resp.Errors.Contains(RequestError{
+		Slug:  requestErrMissing,
+		Field: "/profileID",
+	}) {
+		return Account{}, ErrAccountRequestMissingProfileID
+	}
+	if resp.Errors.Contains(RequestError{
+		Slug:  requestErrConflict,
+		Field: "/id",
+	}) {
+		return Account{}, ErrAccountAlreadyRegistered
+	}
+
+	if len(resp.Errors) > 0 {
+		yall.FromContext(ctx).WithField("errors", resp.Errors).Error("unexpected error in response")
+		return Account{}, ErrUnexpectedError
+	}
+	// TODO: more robust account returning
+	return resp.Accounts[0], nil
 }
 
 // Get retrieves the Account specified by `id` from the accounts service. The
@@ -97,12 +133,37 @@ func (a AccountsService) Get(ctx context.Context, id string) (Account, error) {
 		return Account{}, err
 	}
 	jsonRequest(req)
-	_, err = a.client.Do(req)
+	res, err := a.client.Do(req)
 	if err != nil {
 		return Account{}, fmt.Errorf("error making request: %w", err)
 	}
-	// TODO: check response code, return errors, unmarshal body
-	return Account{}, errors.New("not yet implemented")
+	resp, err := responseFromBody(res)
+	if err != nil {
+		return Account{}, err
+	}
+
+	// standard checks
+	if resp.Errors.Contains(serverError) {
+		return Account{}, ErrServerError
+	}
+	if resp.Errors.Contains(invalidFormatError) {
+		return Account{}, ErrInvalidFormatError
+	}
+	if resp.Errors.Contains(RequestError{
+		Slug:   requestErrAccessDenied,
+		Header: "Authorization",
+	}) {
+		return Account{}, ErrUnauthorized
+	}
+
+	// TODO: handle request-specific errors
+
+	if len(resp.Errors) > 0 {
+		yall.FromContext(ctx).WithField("errors", resp.Errors).Error("unexpected error in response")
+		return Account{}, ErrUnexpectedError
+	}
+	// TODO: make account selection from the response more reliable
+	return resp.Accounts[0], nil
 }
 
 // ListByProfileID returns a list of Accounts associated with profileID. The
@@ -120,12 +181,37 @@ func (a AccountsService) ListByProfileID(ctx context.Context, profileID string) 
 		return nil, err
 	}
 	jsonRequest(req)
-	_, err = a.client.Do(req)
+	res, err := a.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error making request: %w", err)
 	}
-	// TODO: check response code, return errors, unmarshal body
-	return nil, errors.New("not yet implemented")
+	resp, err := responseFromBody(res)
+	if err != nil {
+		return nil, err
+	}
+
+	// standard checks
+	if resp.Errors.Contains(serverError) {
+		return nil, ErrServerError
+	}
+	if resp.Errors.Contains(invalidFormatError) {
+		return nil, ErrInvalidFormatError
+	}
+	if resp.Errors.Contains(RequestError{
+		Slug:   requestErrAccessDenied,
+		Header: "Authorization",
+	}) {
+		return nil, ErrUnauthorized
+	}
+
+	// TODO: handle request-specific errors
+
+	if len(resp.Errors) > 0 {
+		yall.FromContext(ctx).WithField("errors", resp.Errors).Error("unexpected error in response")
+		return nil, ErrUnexpectedError
+	}
+
+	return resp.Accounts, nil
 }
 
 // Delete removes an Account from the accounts service. The request will be
@@ -140,10 +226,35 @@ func (a AccountsService) Delete(ctx context.Context, id string) error {
 		return err
 	}
 	jsonRequest(req)
-	_, err = a.client.Do(req)
+	res, err := a.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("error making request: %w", err)
 	}
-	// TODO: check response code, return errors
-	return errors.New("not yet implemented")
+	resp, err := responseFromBody(res)
+	if err != nil {
+		return err
+	}
+
+	// standard checks
+	if resp.Errors.Contains(serverError) {
+		return ErrServerError
+	}
+	if resp.Errors.Contains(invalidFormatError) {
+		return ErrInvalidFormatError
+	}
+	if resp.Errors.Contains(RequestError{
+		Slug:   requestErrAccessDenied,
+		Header: "Authorization",
+	}) {
+		return ErrUnauthorized
+	}
+
+	// TODO: handle request-specific errors
+
+	if len(resp.Errors) > 0 {
+		yall.FromContext(ctx).WithField("errors", resp.Errors).Error("unexpected error in response")
+		return ErrUnexpectedError
+	}
+
+	return nil
 }
