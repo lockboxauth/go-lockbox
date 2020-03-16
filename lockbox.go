@@ -99,6 +99,11 @@ type Client struct {
 	refreshToken string
 
 	hmacs hmacAuths
+
+	Accounts *AccountsService
+	Clients  *ClientsService
+	OAuth2   *OAuth2Service
+	Scopes   *ScopesService
 }
 
 type hmacAuths struct {
@@ -173,17 +178,37 @@ func (h HMACCredentials) Apply(c *Client) {
 // The baseURL specified should point to the URL that lockbox-apid is serving
 // at. Any number of AuthMethods can be passed to configure the client,
 // including none.
-func NewClient(baseURL string, auth ...AuthMethod) (Client, error) {
+func NewClient(baseURL string, auth ...AuthMethod) (*Client, error) {
 	base, err := url.Parse(baseURL)
 	if err != nil {
-		return Client{}, fmt.Errorf("error parsing baseURL: %w", err)
+		return nil, fmt.Errorf("error parsing baseURL: %w", err)
 	}
-	c := Client{
+	c := &Client{
 		client:  cleanhttp.DefaultPooledClient(),
 		baseURL: base,
 	}
 	for _, method := range auth {
-		method.Apply(&c)
+		method.Apply(c)
+	}
+
+	c.Accounts = &AccountsService{
+		BasePath: accountsServiceDefaultBasePath,
+		client:   c,
+	}
+
+	c.Clients = &ClientsService{
+		BasePath: clientsServiceDefaultBasePath,
+		client:   c,
+	}
+
+	c.OAuth2 = &OAuth2Service{
+		BasePath: oauth2ServiceDefaultBasePath,
+		client:   c,
+	}
+
+	c.Scopes = &ScopesService{
+		BasePath: scopesServiceDefaultBasePath,
+		client:   c,
 	}
 	return c, nil
 }
