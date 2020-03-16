@@ -61,7 +61,7 @@ func (s ScopesService) ListDefault(ctx context.Context) ([]Scope, error) {
 	return nil, errors.New("not implemented yet")
 }
 
-func (s ScopesService) GetByID(ctx context.Context) (map[string]Scope, error) {
+func (s ScopesService) GetByIDs(ctx context.Context, ids []string) (map[string]Scope, error) {
 	// TODO: implement retrieving scopes by ID
 	return nil, errors.New("not implemented yet")
 }
