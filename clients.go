@@ -1,9 +1,16 @@
 package lockbox
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
+	"path"
 	"time"
+
+	"yall.in"
 )
 
 const (
@@ -43,9 +50,60 @@ type ClientsService struct {
 	client   *Client
 }
 
+func (c ClientsService) buildURL(p string) string {
+	return path.Join(c.BasePath, p)
+}
+
 func (c ClientsService) Create(ctx context.Context, client APIClient) (APIClient, error) {
-	// TODO: create a client
-	return APIClient{}, errors.New("not implemented yet")
+	type request struct {
+		Client APIClient `json:"client"`
+	}
+	b, err := json.Marshal(request{client})
+	if err != nil {
+		return APIClient{}, fmt.Errorf("error serialising client: %w", err)
+	}
+	buf := bytes.NewBuffer(b)
+	req, err := c.client.NewRequest(ctx, http.MethodPost, c.buildURL("/"), buf)
+	if err != nil {
+		return APIClient{}, fmt.Errorf("error constructing request: %w", err)
+	}
+	jsonRequest(req)
+	err = c.client.MakeClientsHMACRequest(req)
+	if err != nil {
+		return APIClient{}, err
+	}
+	res, err := c.client.Do(req)
+	if err != nil {
+		return APIClient{}, fmt.Errorf("error making request: %w", err)
+	}
+	resp, err := responseFromBody(res)
+	if err != nil {
+		return APIClient{}, err
+	}
+
+	// standard checks
+	if resp.Errors.Contains(serverError) {
+		return APIClient{}, ErrServerError
+	}
+	if resp.Errors.Contains(invalidFormatError) {
+		return APIClient{}, ErrInvalidFormatError
+	}
+	if resp.Errors.Contains(RequestError{
+		Slug:   requestErrAccessDenied,
+		Header: "Authorization",
+	}) {
+		return APIClient{}, ErrUnauthorized
+	}
+
+	// req specific checks
+	// TODO: check for requestErrConflict Field "/client/id"
+
+	if len(resp.Errors) > 0 {
+		yall.FromContext(ctx).WithField("errors", resp.Errors).Error("unexpected error in response")
+		return APIClient{}, ErrUnexpectedError
+	}
+	// TODO: more robust account returning
+	return resp.Clients[0], nil
 }
 
 func (c ClientsService) Get(ctx context.Context, id string) (APIClient, error) {
