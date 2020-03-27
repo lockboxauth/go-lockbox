@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"regexp"
+	"strconv"
 	"time"
 
 	"yall.in"
@@ -24,6 +26,23 @@ var (
 	ErrClientRequestMissingID            = errors.New("request must have the ID set")
 	ErrClientRequestMissingRedirectURIID = errors.New("request must have the URI ID set")
 )
+
+var (
+	redirectURIURIIndexRegexp = regexp.MustCompile("^/redirectURIs/([0-9]*)/URI$")
+	redirectURIIDIndexRegexp  = regexp.MustCompile("^/redirectURIs/([0-9]*)/id$")
+)
+
+type ErrRedirectURIURIMissing RedirectURI
+
+func (e ErrRedirectURIURIMissing) Error() string {
+	return fmt.Sprintf("redirect URI %+v must have its URI set")
+}
+
+type ErrRedirectURIIDConflict RedirectURI
+
+func (e ErrRedirectURIIDConflict) Error() string {
+	return fmt.Sprintf("redirect URI %+v has an ID that has already been used")
+}
 
 // APIClient is a Client from the clients service. It represents an API
 // consumer that can make requests against Lockbox and the APIs it is
@@ -394,8 +413,28 @@ func (c ClientsService) CreateRedirectURIs(ctx context.Context, id string, uris 
 	}
 
 	// req specific checks
-	// TODO: check for requestErrMissing on /redirectURIs/{pos}/URI
-	// TODO: check for requestErrConflict on /redirectURIs/{pos}/id
+	if matches := resp.Errors.FieldMatches(requestErrMissing, redirectURIURIIndexRegexp); matches != nil {
+		if len(matches) > 0 && len(matches[0]) > 1 {
+			posStr := matches[0][1]
+			pos, err := strconv.Atoi(posStr)
+			if err != nil || len(uris) <= pos {
+				yall.FromContext(ctx).WithError(err).WithField("field_value", matches[0][0]).Error("error parsing which redirect URI caused an error")
+			} else {
+				return nil, ErrRedirectURIURIMissing(uris[pos])
+			}
+		}
+	}
+	if matches := resp.Errors.FieldMatches(requestErrConflict, redirectURIIDIndexRegexp); matches != nil {
+		if len(matches) > 0 && len(matches[0]) > 1 {
+			posStr := matches[0][1]
+			pos, err := strconv.Atoi(posStr)
+			if err != nil || len(uris) <= pos {
+				yall.FromContext(ctx).WithError(err).WithField("field_value", matches[0][0]).Error("error parsing which redirect URI caused an error")
+			} else {
+				return nil, ErrRedirectURIIDConflict(uris[pos])
+			}
+		}
+	}
 
 	if len(resp.Errors) > 0 {
 		yall.FromContext(ctx).WithField("errors", resp.Errors).Error("unexpected error in response")

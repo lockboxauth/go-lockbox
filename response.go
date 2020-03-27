@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 )
 
 const (
@@ -110,6 +111,18 @@ func (e RequestErrors) Contains(err RequestError) bool {
 		}
 	}
 	return false
+}
+
+func (e RequestErrors) FieldMatches(slug string, re *regexp.Regexp) [][]string {
+	for _, candidate := range e {
+		if candidate.Slug != slug {
+			continue
+		}
+		if re.MatchString(candidate.Field) {
+			return re.FindAllStringSubmatch(candidate.Field, -1)
+		}
+	}
+	return nil
 }
 
 func jsonRequest(r *http.Request) {
