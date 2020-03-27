@@ -22,6 +22,9 @@ var (
 	ErrAccountRequestMissingID        = errors.New("request must have the ID set")
 	ErrAccountRequestMissingProfileID = errors.New("request must have the ProfileID set")
 	ErrAccountAlreadyRegistered       = errors.New("that account has already been registered")
+	ErrAccountNotFound                = errors.New("account not found")
+	ErrAccountAccessDenied            = errors.New("account access denied")
+	ErrProfileAccessDenied            = errors.New("profile access denied")
 )
 
 // Account is an Account from the accounts service. It represents a login
@@ -124,6 +127,9 @@ func (a AccountsService) Create(ctx context.Context, account Account) (Account, 
 // request will be authenticated with the token credentials configured on the
 // Client.
 func (a AccountsService) Get(ctx context.Context, id string) (Account, error) {
+	if id == "" {
+		return Account{}, ErrAccountRequestMissingID
+	}
 	req, err := a.client.NewRequest(ctx, http.MethodGet, a.buildURL(id), nil)
 	if err != nil {
 		return Account{}, fmt.Errorf("error constructing request: %w", err)
@@ -156,13 +162,25 @@ func (a AccountsService) Get(ctx context.Context, id string) (Account, error) {
 		return Account{}, ErrUnauthorized
 	}
 
-	// TODO: handle request-specific errors
+	// req specific checks
+	if resp.Errors.Contains(RequestError{
+		Slug:  requestErrNotFound,
+		Param: "id",
+	}) {
+		return Account{}, ErrAccountNotFound
+	}
+	if resp.Errors.Contains(RequestError{
+		Slug:  requestErrAccessDenied,
+		Param: "id",
+	}) {
+		return Account{}, ErrAccountAccessDenied
+	}
 
 	if len(resp.Errors) > 0 {
 		yall.FromContext(ctx).WithField("errors", resp.Errors).Error("unexpected error in response")
 		return Account{}, ErrUnexpectedError
 	}
-	// TODO: make account selection from the response more reliable
+	// TODO: more robust account returning
 	return resp.Accounts[0], nil
 }
 
@@ -170,6 +188,9 @@ func (a AccountsService) Get(ctx context.Context, id string) (Account, error) {
 // request will be authenticated with the token credentials configured on the
 // Client.
 func (a AccountsService) ListByProfileID(ctx context.Context, profileID string) ([]Account, error) {
+	if profileID == "" {
+		return nil, ErrAccountRequestMissingProfileID
+	}
 	v := url.Values{}
 	v.Set("profile_id", profileID)
 	req, err := a.client.NewRequest(ctx, http.MethodGet, a.buildURL("?"+v.Encode()), nil)
@@ -204,7 +225,19 @@ func (a AccountsService) ListByProfileID(ctx context.Context, profileID string) 
 		return nil, ErrUnauthorized
 	}
 
-	// TODO: handle request-specific errors
+	// req specific checks
+	if resp.Errors.Contains(RequestError{
+		Slug:  requestErrMissing,
+		Param: "profileID",
+	}) {
+		return nil, ErrAccountRequestMissingProfileID
+	}
+	if resp.Errors.Contains(RequestError{
+		Slug:  requestErrAccessDenied,
+		Param: "profileID",
+	}) {
+		return nil, ErrProfileAccessDenied
+	}
 
 	if len(resp.Errors) > 0 {
 		yall.FromContext(ctx).WithField("errors", resp.Errors).Error("unexpected error in response")
@@ -217,6 +250,9 @@ func (a AccountsService) ListByProfileID(ctx context.Context, profileID string) 
 // Delete removes an Account from the accounts service. The request will be
 // authenticated with the token credentials configured on the Client.
 func (a AccountsService) Delete(ctx context.Context, id string) error {
+	if id == "" {
+		return ErrAccountRequestMissingID
+	}
 	req, err := a.client.NewRequest(ctx, http.MethodDelete, a.buildURL(id), nil)
 	if err != nil {
 		return fmt.Errorf("error constructing request: %w", err)
@@ -249,7 +285,19 @@ func (a AccountsService) Delete(ctx context.Context, id string) error {
 		return ErrUnauthorized
 	}
 
-	// TODO: handle request-specific errors
+	// req specific checks
+	if resp.Errors.Contains(RequestError{
+		Slug:  requestErrNotFound,
+		Param: "id",
+	}) {
+		return ErrAccountNotFound
+	}
+	if resp.Errors.Contains(RequestError{
+		Slug:  requestErrAccessDenied,
+		Param: "id",
+	}) {
+		return ErrAccountAccessDenied
+	}
 
 	if len(resp.Errors) > 0 {
 		yall.FromContext(ctx).WithField("errors", resp.Errors).Error("unexpected error in response")
