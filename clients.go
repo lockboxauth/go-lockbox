@@ -18,9 +18,11 @@ const (
 )
 
 var (
-	ErrClientAlreadyExists    = errors.New("a client with that ID already exists")
-	ErrClientNotFound         = errors.New("client not found")
-	ErrClientRequestMissingID = errors.New("request must have the ID set")
+	ErrClientAlreadyExists               = errors.New("a client with that ID already exists")
+	ErrClientNotFound                    = errors.New("client not found")
+	ErrClientRedirectURINotFound         = errors.New("redirect URI not found")
+	ErrClientRequestMissingID            = errors.New("request must have the ID set")
+	ErrClientRequestMissingRedirectURIID = errors.New("request must have the URI ID set")
 )
 
 // APIClient is a Client from the clients service. It represents an API
@@ -406,6 +408,70 @@ func (c ClientsService) DeleteRedirectURI(ctx context.Context, clientID, uriID s
 	if clientID == "" {
 		return ErrClientRequestMissingID
 	}
-	// TODO: delete a redirect URI from a client
-	return errors.New("not implemented yet")
+	if uriID == "" {
+		return ErrClientRequestMissingRedirectURIID
+	}
+	req, err := c.client.NewRequest(ctx, http.MethodDelete, c.buildURL("/"+clientID+"/redirectURIs/"+uriID), nil)
+	if err != nil {
+		return fmt.Errorf("error constructing request: %w", err)
+	}
+	jsonRequest(req)
+	err = c.client.MakeClientsHMACRequest(req)
+	if err != nil {
+		return err
+	}
+	res, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("error making request: %w", err)
+	}
+	resp, err := responseFromBody(res)
+	if err != nil {
+		return err
+	}
+
+	// standard checks
+	if resp.Errors.Contains(serverError) {
+		return ErrServerError
+	}
+	if resp.Errors.Contains(invalidFormatError) {
+		return ErrInvalidFormatError
+	}
+	if resp.Errors.Contains(RequestError{
+		Slug:   requestErrAccessDenied,
+		Header: "Authorization",
+	}) {
+		return ErrUnauthorized
+	}
+
+	// req specific checks
+	if resp.Errors.Contains(RequestError{
+		Slug:  requestErrMissing,
+		Param: "id",
+	}) {
+		return ErrClientRequestMissingID
+	}
+	if resp.Errors.Contains(RequestError{
+		Slug:  requestErrMissing,
+		Param: "uri",
+	}) {
+		return ErrClientRequestMissingRedirectURIID
+	}
+	if resp.Errors.Contains(RequestError{
+		Slug:  requestErrNotFound,
+		Param: "id",
+	}) {
+		return ErrClientNotFound
+	}
+	if resp.Errors.Contains(RequestError{
+		Slug:  requestErrNotFound,
+		Param: "uri",
+	}) {
+		return ErrClientRedirectURINotFound
+	}
+
+	if len(resp.Errors) > 0 {
+		yall.FromContext(ctx).WithField("errors", resp.Errors).Error("unexpected error in response")
+		return ErrUnexpectedError
+	}
+	return nil
 }
