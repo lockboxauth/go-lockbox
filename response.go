@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"regexp"
+	"strconv"
 )
 
 const (
@@ -36,6 +38,10 @@ var (
 	// the request as made. Users typically can't do anything about these,
 	// and they should be reported as bugs against go-lockbox.
 	ErrInvalidFormatError = errors.New("invalid request")
+
+	// ErrInvalidRequestError is returned when the server rejected the
+	// request, without giving more information as to why.
+	ErrInvalidRequestError = errors.New("invalid request")
 
 	// ErrUnauthorized is returned when a request is made that the Client
 	// is not authorized to make. Check the credentials and try again.
@@ -71,6 +77,41 @@ func responseFromBody(resp *http.Response) (Response, error) {
 		return Response{}, fmt.Errorf("error parsing response body: %w", err)
 	}
 	return res, nil
+}
+
+func oauthResponse(resp *http.Response) (OAuth2Response, error) {
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return OAuth2Response{}, fmt.Errorf("error reading response body: %w", err)
+	}
+	var res OAuth2Response
+	err = json.Unmarshal(b, &res)
+	if err != nil {
+		return res, fmt.Errorf("error parsing response body: %w", err)
+	}
+	return res, nil
+}
+
+// OAuth2ResponseFromParams decodes the URL parameters passed in and returns an
+// OAuth2Response from their values.
+func OAuth2ResponseFromParams(v url.Values) (OAuth2Response, error) {
+	var expiresIn int
+	if e := v.Get("expires_in"); e != "" {
+		eint, err := strconv.Atoi(e)
+		if err != nil {
+			return OAuth2Response{}, fmt.Errorf("error parsing expires_in as integer")
+		}
+		expiresIn = eint
+	}
+	return OAuth2Response{
+		AccessToken:  v.Get("access_token"),
+		TokenType:    v.Get("token_type"),
+		ExpiresIn:    expiresIn,
+		RefreshToken: v.Get("refresh_token"),
+		Scope:        v.Get("scope"),
+		Error:        v.Get("error"),
+	}, nil
 }
 
 // RequestError describes an error that an HTTP request encountered, hopefully
@@ -113,6 +154,8 @@ func (e RequestErrors) Contains(err RequestError) bool {
 	return false
 }
 
+// FieldMatches checks if any RequestError in e has the specified slug and a
+// field that matches the passed regular expression.
 func (e RequestErrors) FieldMatches(slug string, re *regexp.Regexp) [][]string {
 	for _, candidate := range e {
 		if candidate.Slug != slug {

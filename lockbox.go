@@ -214,6 +214,7 @@ type HMACCredentials struct {
 // Apply configures the Client `c` with the HMAC credentials set in `h`.
 func (h HMACCredentials) Apply(c *Client) {
 	c.hmacs.clients = h.Clients
+	c.hmacs.scopes = h.Scopes
 }
 
 // NewClient returns a new client capable of interacting with Lockbox services.
@@ -263,11 +264,16 @@ func NewClient(ctx context.Context, baseURL string, auth ...AuthMethod) (*Client
 
 // RefreshTokens exchanges the token credentials configured on `c` for new
 // token credentials, and configures `c` with the new token credentials.
-func (c *Client) RefreshTokens(ctx context.Context) error {
+func (c *Client) RefreshTokens(ctx context.Context, scopes []string) error {
 	if c.refreshToken == "" {
 		return ErrNoRefreshTokenSet
 	}
-	// TODO: refresh the tokens
+	resp, err := c.OAuth2.ExchangeRefreshToken(ctx, c.refreshToken, scopes)
+	if err != nil {
+		return fmt.Errorf("error exchanging refresh token: %w", err)
+	}
+	c.accessToken = resp.AccessToken
+	c.refreshToken = resp.RefreshToken
 	return nil
 }
 
@@ -297,7 +303,7 @@ func (c Client) NewRequest(ctx context.Context, method, path string, body io.Rea
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "go-lockbox/"+version)
+	req.Header.Set("User-Agent", "go-lockbox/"+getVersion())
 	return req, nil
 }
 
@@ -313,14 +319,13 @@ func (c Client) AddClientCredentials(r *http.Request) error {
 	if c.clientSecret != "" && c.clientRedirectURI == "" {
 		return ErrBothClientSecretAndRedirectURISet
 	}
-	values := r.URL.Query()
-	values.Set("client_id", c.clientID)
 	if c.clientSecret != "" {
 		r.SetBasicAuth(c.clientID, c.clientSecret)
+		return nil
 	}
-	if c.clientRedirectURI != "" {
-		values.Set("redirect_uri", c.clientRedirectURI)
-	}
+	values := r.URL.Query()
+	values.Set("client_id", c.clientID)
+	values.Set("redirect_uri", c.clientRedirectURI)
 	r.URL.RawQuery = values.Encode()
 	return nil
 }

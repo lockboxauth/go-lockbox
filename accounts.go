@@ -19,12 +19,29 @@ const (
 )
 
 var (
-	ErrAccountRequestMissingID        = errors.New("request must have the ID set")
+	// ErrAccountRequestMissingID is returned when a request requires an
+	// ID, but none was set.
+	ErrAccountRequestMissingID = errors.New("request must have the ID set")
+
+	// ErrAccountRequestMissingProfileID is returned when a request
+	// requires a profile ID, but none was set.
 	ErrAccountRequestMissingProfileID = errors.New("request must have the ProfileID set")
-	ErrAccountAlreadyRegistered       = errors.New("that account has already been registered")
-	ErrAccountNotFound                = errors.New("account not found")
-	ErrAccountAccessDenied            = errors.New("account access denied")
-	ErrProfileAccessDenied            = errors.New("profile access denied")
+
+	// ErrAccountAlreadyRegistered is returned when the account that is
+	// being registered has already been registered.
+	ErrAccountAlreadyRegistered = errors.New("that account has already been registered")
+
+	// ErrAccountNotFound is returned when the requested account can't be
+	// found.
+	ErrAccountNotFound = errors.New("account not found")
+
+	// ErrAccountAccessDenied is returned when the authenticating
+	// credentials don't have access to the requested account.
+	ErrAccountAccessDenied = errors.New("account access denied")
+
+	// ErrProfileAccessDenied is returned when the authenticating
+	// credentials don't have access to the requested profile.
+	ErrProfileAccessDenied = errors.New("profile access denied")
 )
 
 // Account is an Account from the accounts service. It represents a login
@@ -119,7 +136,10 @@ func (a AccountsService) Create(ctx context.Context, account Account) (Account, 
 		yall.FromContext(ctx).WithField("errors", resp.Errors).Error("unexpected error in response")
 		return Account{}, ErrUnexpectedError
 	}
-	// TODO: more robust account returning
+
+	if len(resp.Accounts) < 1 {
+		return Account{}, fmt.Errorf("no account returned in response; this is almost certainly a server error")
+	}
 	return resp.Accounts[0], nil
 }
 
@@ -152,9 +172,6 @@ func (a AccountsService) Get(ctx context.Context, id string) (Account, error) {
 	if resp.Errors.Contains(serverError) {
 		return Account{}, ErrServerError
 	}
-	if resp.Errors.Contains(invalidFormatError) {
-		return Account{}, ErrInvalidFormatError
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:   requestErrAccessDenied,
 		Header: "Authorization",
@@ -180,7 +197,10 @@ func (a AccountsService) Get(ctx context.Context, id string) (Account, error) {
 		yall.FromContext(ctx).WithField("errors", resp.Errors).Error("unexpected error in response")
 		return Account{}, ErrUnexpectedError
 	}
-	// TODO: more robust account returning
+
+	if len(resp.Accounts) < 1 {
+		return Account{}, fmt.Errorf("no account returned in response; this is almost certainly a server error")
+	}
 	return resp.Accounts[0], nil
 }
 
@@ -192,7 +212,7 @@ func (a AccountsService) ListByProfileID(ctx context.Context, profileID string) 
 		return nil, ErrAccountRequestMissingProfileID
 	}
 	v := url.Values{}
-	v.Set("profile_id", profileID)
+	v.Set("profileID", profileID)
 	req, err := a.client.NewRequest(ctx, http.MethodGet, a.buildURL("?"+v.Encode()), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error constructing request: %w", err)
@@ -214,9 +234,6 @@ func (a AccountsService) ListByProfileID(ctx context.Context, profileID string) 
 	// standard checks
 	if resp.Errors.Contains(serverError) {
 		return nil, ErrServerError
-	}
-	if resp.Errors.Contains(invalidFormatError) {
-		return nil, ErrInvalidFormatError
 	}
 	if resp.Errors.Contains(RequestError{
 		Slug:   requestErrAccessDenied,
@@ -274,9 +291,6 @@ func (a AccountsService) Delete(ctx context.Context, id string) error {
 	// standard checks
 	if resp.Errors.Contains(serverError) {
 		return ErrServerError
-	}
-	if resp.Errors.Contains(invalidFormatError) {
-		return ErrInvalidFormatError
 	}
 	if resp.Errors.Contains(RequestError{
 		Slug:   requestErrAccessDenied,
