@@ -23,7 +23,7 @@ func staticResponseServer(code int, body []byte) *httptest.Server {
 	}))
 }
 
-func testClient(t *testing.T, ctx context.Context, url string, auth ...AuthMethod) *Client {
+func testClient(ctx context.Context, t *testing.T, url string, auth ...AuthMethod) *Client {
 	client, err := NewClient(ctx, url, auth...)
 	if err != nil {
 		t.Fatalf("Error creating client: %s", err)

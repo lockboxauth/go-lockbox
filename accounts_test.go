@@ -30,7 +30,7 @@ func TestAccountsCreate_register(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := testClient(t, ctx, server.URL)
+	client := testClient(ctx, t, server.URL)
 
 	account, err := client.Accounts.Create(ctx, Account{
 		ID:             "test@lockbox.dev",
@@ -69,7 +69,7 @@ func TestAccountsCreate_addAccount(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := testClient(t, ctx, server.URL, AuthTokens{
+	client := testClient(ctx, t, server.URL, AuthTokens{
 		Access:  "test-access",
 		Refresh: "test-refresh",
 	})
@@ -100,7 +100,7 @@ func TestAccountsCreate_noAccounts(t *testing.T) {
 	server := staticResponseServer(http.StatusOK, []byte(`{}`))
 	defer server.Close()
 
-	client := testClient(t, ctx, server.URL)
+	client := testClient(ctx, t, server.URL)
 	_, err := client.Accounts.Create(ctx, Account{
 		ID:             "test@lockbox.dev",
 		IsRegistration: true,
@@ -161,7 +161,7 @@ func TestAccountsCreate_errors(t *testing.T) {
 			server := staticResponseServer(test.status, test.body)
 			defer server.Close()
 
-			client := testClient(t, ctx, server.URL, AuthTokens{
+			client := testClient(ctx, t, server.URL, AuthTokens{
 				Access:  "test-access",
 				Refresh: "test-refresh",
 			})
@@ -194,7 +194,7 @@ func TestAccountsGet_success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := testClient(t, ctx, server.URL, AuthTokens{
+	client := testClient(ctx, t, server.URL, AuthTokens{
 		Access:  "test-access",
 		Refresh: "test-refresh",
 	})
@@ -255,7 +255,7 @@ func TestAccountsGet_errors(t *testing.T) {
 			server := staticResponseServer(test.status, test.body)
 			defer server.Close()
 
-			client := testClient(t, ctx, server.URL, AuthTokens{
+			client := testClient(ctx, t, server.URL, AuthTokens{
 				Access:  "test-access",
 				Refresh: "test-refresh",
 			})
@@ -275,7 +275,7 @@ func TestAccountsGet_noAccounts(t *testing.T) {
 	server := staticResponseServer(http.StatusOK, []byte(`{}`))
 	defer server.Close()
 
-	client := testClient(t, ctx, server.URL, AuthTokens{
+	client := testClient(ctx, t, server.URL, AuthTokens{
 		Access:  "test-access",
 		Refresh: "test-refresh",
 	})
@@ -293,7 +293,7 @@ func TestAccountsGet_missingID(t *testing.T) {
 	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
 	defer server.Close()
 
-	client := testClient(t, ctx, server.URL, AuthTokens{
+	client := testClient(ctx, t, server.URL, AuthTokens{
 		Access:  "test-access",
 		Refresh: "test-refresh",
 	})
@@ -321,7 +321,7 @@ func TestAccountsListByProfileID_success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := testClient(t, ctx, server.URL, AuthTokens{
+	client := testClient(ctx, t, server.URL, AuthTokens{
 		Access:  "test-access",
 		Refresh: "test-refresh",
 	})
@@ -384,7 +384,7 @@ func TestAccountsListByProfileID_errors(t *testing.T) {
 			server := staticResponseServer(test.status, test.body)
 			defer server.Close()
 
-			client := testClient(t, ctx, server.URL, AuthTokens{
+			client := testClient(ctx, t, server.URL, AuthTokens{
 				Access:  "test-access",
 				Refresh: "test-refresh",
 			})
@@ -404,7 +404,7 @@ func TestAccountsListByProfileID_missingProfileID(t *testing.T) {
 	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "profileID"}]}`))
 	defer server.Close()
 
-	client := testClient(t, ctx, server.URL, AuthTokens{
+	client := testClient(ctx, t, server.URL, AuthTokens{
 		Access:  "test-access",
 		Refresh: "test-refresh",
 	})
@@ -431,7 +431,7 @@ func TestAccountsDelete_success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := testClient(t, ctx, server.URL, AuthTokens{
+	client := testClient(ctx, t, server.URL, AuthTokens{
 		Access:  "test-access",
 		Refresh: "test-refresh",
 	})
@@ -482,7 +482,7 @@ func TestAccountsDelete_errors(t *testing.T) {
 			server := staticResponseServer(test.status, test.body)
 			defer server.Close()
 
-			client := testClient(t, ctx, server.URL, AuthTokens{
+			client := testClient(ctx, t, server.URL, AuthTokens{
 				Access:  "test-access",
 				Refresh: "test-refresh",
 			})
@@ -502,7 +502,7 @@ func TestAccountsDelete_missingID(t *testing.T) {
 	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
 	defer server.Close()
 
-	client := testClient(t, ctx, server.URL, AuthTokens{
+	client := testClient(ctx, t, server.URL, AuthTokens{
 		Access:  "test-access",
 		Refresh: "test-refresh",
 	})
