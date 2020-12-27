@@ -52,7 +52,7 @@ var (
 type ErrRedirectURIURIMissing RedirectURI
 
 func (e ErrRedirectURIURIMissing) Error() string {
-	return fmt.Sprintf("redirect URI %+v must have its URI set", e)
+	return fmt.Sprintf("redirect URI %s must have its URI set", e.ID)
 }
 
 // ErrRedirectURIIDConflict is an error type indicating the RedirectURI that
@@ -60,7 +60,7 @@ func (e ErrRedirectURIURIMissing) Error() string {
 type ErrRedirectURIIDConflict RedirectURI
 
 func (e ErrRedirectURIIDConflict) Error() string {
-	return fmt.Sprintf("redirect URI %+v has an ID that has already been used", e)
+	return fmt.Sprintf("redirect URI %s has an ID that has already been used", e.ID)
 }
 
 // APIClient is a Client from the clients service. It represents an API
@@ -190,9 +190,6 @@ func (c ClientsService) Get(ctx context.Context, id string) (APIClient, error) {
 	if resp.Errors.Contains(serverError) {
 		return APIClient{}, ErrServerError
 	}
-	if resp.Errors.Contains(invalidFormatError) {
-		return APIClient{}, ErrInvalidFormatError
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:   requestErrAccessDenied,
 		Header: "Authorization",
@@ -201,12 +198,6 @@ func (c ClientsService) Get(ctx context.Context, id string) (APIClient, error) {
 	}
 
 	// req specific checks
-	if resp.Errors.Contains(RequestError{
-		Slug:  requestErrMissing,
-		Param: "id",
-	}) {
-		return APIClient{}, ErrClientRequestMissingID
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:  requestErrNotFound,
 		Param: "id",
@@ -253,9 +244,6 @@ func (c ClientsService) Delete(ctx context.Context, id string) error {
 	if resp.Errors.Contains(serverError) {
 		return ErrServerError
 	}
-	if resp.Errors.Contains(invalidFormatError) {
-		return ErrInvalidFormatError
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:   requestErrAccessDenied,
 		Header: "Authorization",
@@ -264,12 +252,6 @@ func (c ClientsService) Delete(ctx context.Context, id string) error {
 	}
 
 	// req specific checks
-	if resp.Errors.Contains(RequestError{
-		Slug:  requestErrMissing,
-		Param: "id",
-	}) {
-		return ErrClientRequestMissingID
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:  requestErrNotFound,
 		Param: "id",
@@ -313,9 +295,6 @@ func (c ClientsService) ResetSecret(ctx context.Context, id string) (APIClient, 
 	if resp.Errors.Contains(serverError) {
 		return APIClient{}, ErrServerError
 	}
-	if resp.Errors.Contains(invalidFormatError) {
-		return APIClient{}, ErrInvalidFormatError
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:   requestErrAccessDenied,
 		Header: "Authorization",
@@ -324,12 +303,6 @@ func (c ClientsService) ResetSecret(ctx context.Context, id string) (APIClient, 
 	}
 
 	// req specific checks
-	if resp.Errors.Contains(RequestError{
-		Slug:  requestErrMissing,
-		Param: "id",
-	}) {
-		return APIClient{}, ErrClientRequestMissingID
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:  requestErrNotFound,
 		Param: "id",
@@ -423,7 +396,7 @@ func (c ClientsService) CreateRedirectURIs(ctx context.Context, id string, uris 
 		return nil, fmt.Errorf("error serialising redirect URIs: %w", err)
 	}
 	buf := bytes.NewBuffer(b)
-	req, err := c.client.NewRequest(ctx, http.MethodPost, c.buildURL("/"), buf)
+	req, err := c.client.NewRequest(ctx, http.MethodPost, c.buildURL("/"+id+"/redirectURIs"), buf)
 	if err != nil {
 		return nil, fmt.Errorf("error constructing request: %w", err)
 	}

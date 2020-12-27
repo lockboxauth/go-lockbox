@@ -60,7 +60,7 @@ var (
 type Response struct {
 	Accounts     []Account     `json:"accounts,omitempty"`
 	Clients      []APIClient   `json:"clients,omitempty"`
-	RedirectURIs []RedirectURI `json:"redirect_uris,omitempty"`
+	RedirectURIs []RedirectURI `json:"redirectURIs,omitempty"`
 	Scopes       []Scope       `json:"scopes,omitempty"`
 	Errors       RequestErrors `json:"errors,omitempty"`
 }
