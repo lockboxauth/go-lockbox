@@ -14,6 +14,7 @@ import (
 )
 
 func TestAccountsCreate_register(t *testing.T) {
+	t.Parallel()
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
@@ -52,6 +53,7 @@ func TestAccountsCreate_register(t *testing.T) {
 }
 
 func TestAccountsCreate_addAccount(t *testing.T) {
+	t.Parallel()
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
@@ -94,6 +96,7 @@ func TestAccountsCreate_addAccount(t *testing.T) {
 }
 
 func TestAccountsCreate_noAccounts(t *testing.T) {
+	t.Parallel()
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
@@ -178,6 +181,7 @@ func TestAccountsCreate_errors(t *testing.T) {
 }
 
 func TestAccountsGet_success(t *testing.T) {
+	t.Parallel()
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
@@ -269,6 +273,7 @@ func TestAccountsGet_errors(t *testing.T) {
 }
 
 func TestAccountsGet_noAccounts(t *testing.T) {
+	t.Parallel()
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
@@ -287,6 +292,7 @@ func TestAccountsGet_noAccounts(t *testing.T) {
 }
 
 func TestAccountsGet_missingID(t *testing.T) {
+	t.Parallel()
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
@@ -304,11 +310,11 @@ func TestAccountsGet_missingID(t *testing.T) {
 }
 
 func TestAccountsListByProfileID_success(t *testing.T) {
+	t.Parallel()
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
 	now := time.Now().Round(time.Second)
-	timestamp := now.Format(time.RFC3339)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/accounts/v1/?profileID=testing123")
@@ -316,8 +322,13 @@ func TestAccountsListByProfileID_success(t *testing.T) {
 		checkAuthorization(t, r, "Bearer test-access")
 
 		w.WriteHeader(http.StatusOK)
-		// TODO: more accounts in response
-		w.Write([]byte(`{"accounts": [{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "` + timestamp + `", "lastSeenAt": "` + timestamp + `", "lastUsedAt": "` + timestamp + `"}]}`))
+		w.Write([]byte(`{"accounts": [`))
+		w.Write([]byte(`{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "` + now.Format(time.RFC3339) + `", "lastSeenAt": "` + now.Format(time.RFC3339) + `", "lastUsedAt": "` + now.Format(time.RFC3339) + `"},`))
+		w.Write([]byte(`{"id": "test2@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "` + now.Add(-1*time.Second).Format(time.RFC3339) + `", "lastSeenAt": "` + now.Add(-1*time.Second).Format(time.RFC3339) + `", "lastUsedAt": "` + now.Add(-1*time.Second).Format(time.RFC3339) + `"},`))
+		w.Write([]byte(`{"id": "test3@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "` + now.Add(-4*time.Second).Format(time.RFC3339) + `", "lastSeenAt": "` + now.Add(-3*time.Second).Format(time.RFC3339) + `", "lastUsedAt": "` + now.Add(-2*time.Second).Format(time.RFC3339) + `"},`))
+		w.Write([]byte(`{"id": "test4@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "` + now.Add(-7*time.Second).Format(time.RFC3339) + `", "lastSeenAt": "` + now.Add(-6*time.Second).Format(time.RFC3339) + `", "lastUsedAt": "` + now.Add(-5*time.Second).Format(time.RFC3339) + `"},`))
+		w.Write([]byte(`{"id": "test5@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "` + now.Add(-10*time.Second).Format(time.RFC3339) + `", "lastSeenAt": "` + now.Add(-9*time.Second).Format(time.RFC3339) + `", "lastUsedAt": "` + now.Add(-8*time.Second).Format(time.RFC3339) + `"}`))
+		w.Write([]byte(`]}`))
 	}))
 	defer server.Close()
 
@@ -338,6 +349,38 @@ func TestAccountsListByProfileID_success(t *testing.T) {
 			CreatedAt:      now,
 			LastUsedAt:     now,
 			LastSeenAt:     now,
+		},
+		{
+			ID:             "test2@lockbox.dev",
+			ProfileID:      "testing123",
+			IsRegistration: false,
+			CreatedAt:      now.Add(-1 * time.Second),
+			LastUsedAt:     now.Add(-1 * time.Second),
+			LastSeenAt:     now.Add(-1 * time.Second),
+		},
+		{
+			ID:             "test3@lockbox.dev",
+			ProfileID:      "testing123",
+			IsRegistration: false,
+			CreatedAt:      now.Add(-4 * time.Second),
+			LastUsedAt:     now.Add(-2 * time.Second),
+			LastSeenAt:     now.Add(-3 * time.Second),
+		},
+		{
+			ID:             "test4@lockbox.dev",
+			ProfileID:      "testing123",
+			IsRegistration: false,
+			CreatedAt:      now.Add(-7 * time.Second),
+			LastUsedAt:     now.Add(-5 * time.Second),
+			LastSeenAt:     now.Add(-6 * time.Second),
+		},
+		{
+			ID:             "test5@lockbox.dev",
+			ProfileID:      "testing123",
+			IsRegistration: false,
+			CreatedAt:      now.Add(-10 * time.Second),
+			LastUsedAt:     now.Add(-8 * time.Second),
+			LastSeenAt:     now.Add(-9 * time.Second),
 		},
 	}, account); diff != "" {
 		t.Errorf("Accounts mismatch (-wanted, +got): %s", diff)
@@ -398,6 +441,7 @@ func TestAccountsListByProfileID_errors(t *testing.T) {
 }
 
 func TestAccountsListByProfileID_missingProfileID(t *testing.T) {
+	t.Parallel()
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
@@ -415,6 +459,7 @@ func TestAccountsListByProfileID_missingProfileID(t *testing.T) {
 }
 
 func TestAccountsDelete_success(t *testing.T) {
+	t.Parallel()
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
@@ -496,6 +541,7 @@ func TestAccountsDelete_errors(t *testing.T) {
 }
 
 func TestAccountsDelete_missingID(t *testing.T) {
+	t.Parallel()
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
