@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -91,9 +92,12 @@ var (
 // Client is an HTTP client that can make requests against Lockbox's various
 // services and the services that use Lockbox for authentication.
 type Client struct {
-	client    *http.Client
-	transport *loggingTransport
-	baseURL   *url.URL
+	client           *http.Client
+	transport        *loggingTransport
+	baseURL          *url.URL
+	userAgentPrepend []string
+	userAgentAppend  []string
+	userAgentMu      *sync.RWMutex
 
 	clientID          string
 	clientSecret      string
@@ -101,6 +105,7 @@ type Client struct {
 
 	accessToken  string
 	refreshToken string
+	tokenMu      sync.RWMutex
 
 	hmacs hmacAuths
 
@@ -227,8 +232,9 @@ func NewClient(ctx context.Context, baseURL string, auth ...AuthMethod) (*Client
 		return nil, fmt.Errorf("error parsing baseURL: %w", err)
 	}
 	c := &Client{
-		client:  cleanhttp.DefaultPooledClient(),
-		baseURL: base,
+		client:      cleanhttp.DefaultPooledClient(),
+		baseURL:     base,
+		userAgentMu: new(sync.RWMutex),
 	}
 
 	c.transport = &loggingTransport{
@@ -265,6 +271,8 @@ func NewClient(ctx context.Context, baseURL string, auth ...AuthMethod) (*Client
 // RefreshTokens exchanges the token credentials configured on `c` for new
 // token credentials, and configures `c` with the new token credentials.
 func (c *Client) RefreshTokens(ctx context.Context, scopes []string) error {
+	c.tokenMu.Lock()
+	defer c.tokenMu.Unlock()
 	if c.refreshToken == "" {
 		return ErrNoRefreshTokenSet
 	}
@@ -286,6 +294,22 @@ func (c *Client) EnableLogs() {
 	c.transport.active = true
 }
 
+// AppendToUserAgent adds the string to the end of the User-Agent header that
+// will be sent with requests from this client.
+func (c *Client) AppendToUserAgent(s string) {
+	c.userAgentMu.Lock()
+	c.userAgentAppend = append(c.userAgentAppend, s)
+	c.userAgentMu.Unlock()
+}
+
+// PrependToUserAgent adds the string to the beginning of the User-Agent header
+// that will be sent with requests from this client.
+func (c *Client) PrependToUserAgent(s string) {
+	c.userAgentMu.Lock()
+	c.userAgentPrepend = append(c.userAgentPrepend, s)
+	c.userAgentMu.Unlock()
+}
+
 // Do executes an *http.Request using the *http.Client associated with `c`.
 func (c Client) Do(req *http.Request) (*http.Response, error) {
 	return c.client.Do(req)
@@ -303,8 +327,23 @@ func (c Client) NewRequest(ctx context.Context, method, path string, body io.Rea
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "go-lockbox/"+getVersion())
+	req.Header.Set("User-Agent", c.buildUA())
 	return req, nil
+}
+
+func (c Client) buildUA() string {
+	ua := "go-lockbox/" + getVersion()
+	c.userAgentMu.RLock()
+	uaAppend := strings.TrimSpace(strings.Join(c.userAgentAppend, " "))
+	uaPrepend := strings.TrimSpace(strings.Join(c.userAgentPrepend, " "))
+	c.userAgentMu.RUnlock()
+	if uaPrepend != "" {
+		ua = uaPrepend + " " + ua
+	}
+	if uaAppend != "" {
+		ua = ua + " " + uaAppend
+	}
+	return ua
 }
 
 // AddClientCredentials adds the configured client credentials to `r`,
@@ -333,6 +372,8 @@ func (c Client) AddClientCredentials(r *http.Request) error {
 // AddTokenCredentials adds the configured tokens to `r` as credentials,
 // authenticating the request.
 func (c Client) AddTokenCredentials(r *http.Request) error {
+	c.tokenMu.RLock()
+	defer c.tokenMu.RUnlock()
 	if c.accessToken == "" {
 		return ErrNoAccessTokenSet
 	}
@@ -377,20 +418,27 @@ func (c Client) MakeScopesHMACRequest(r *http.Request) error {
 }
 
 func (c Client) makeHMACRequest(r *http.Request, auth HMACAuth) error {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return fmt.Errorf("error reading request body: %w", err)
+	var buf *bytes.Buffer
+	if r.Body != nil {
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			return fmt.Errorf("error reading request body: %w", err)
+		}
+		buf = bytes.NewBuffer(body)
+		r.Body = ioutil.NopCloser(buf)
 	}
-	buf := bytes.NewBuffer(body)
-	r.Body = ioutil.NopCloser(buf)
 	signer := hmac.Signer{
 		Secret:  []byte(auth.Secret),
 		MaxSkew: auth.MaxSkew,
 		OrgKey:  auth.OrgKey,
 		Key:     auth.Key,
 	}
+	var content []byte
+	if buf != nil {
+		content = buf.Bytes()
+	}
 	r.Header.Set("Date", time.Now().Format(time.RFC1123))
-	r.Header.Set("Content-SHA256", base64.StdEncoding.EncodeToString(sha256.New().Sum(buf.Bytes())))
+	r.Header.Set("Content-SHA256", base64.StdEncoding.EncodeToString(sha256.New().Sum(content)))
 	sig := signer.Sign(r)
 	r.Header.Set("Authorization", fmt.Sprintf("%s v1 %s:%s", signer.OrgKey, signer.Key, sig))
 	return nil
@@ -401,5 +449,7 @@ func (c Client) makeHMACRequest(r *http.Request, auth HMACAuth) error {
 // on every Client instantiation; there should be no other reason to interact
 // with the tokens this way.
 func (c Client) GetTokens() (access, refresh string) {
+	c.tokenMu.RLock()
+	defer c.tokenMu.RUnlock()
 	return c.accessToken, c.refreshToken
 }
