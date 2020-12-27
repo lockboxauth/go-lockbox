@@ -1,15 +1,28 @@
 package lockbox
 
-import "darlinggo.co/version"
+import "runtime/debug"
 
-const nextVersion = "v0.1.0"
+var versionOverride string
 
 func getVersion() string {
-	if version.Tag != "" {
-		return version.Tag
+	if versionOverride != "" {
+		return versionOverride
 	}
-	if version.Hash != "" {
-		return version.Hash
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return "unknown"
 	}
-	return nextVersion + "-dev"
+	for _, m := range info.Deps {
+		if m.Path != "lockbox.dev/go-lockbox" {
+			continue
+		}
+		if m.Replace == nil {
+			return m.Version
+		}
+		return "replaced"
+	}
+	if info.Main.Path != "lockbox.dev/go-lockbox" {
+		return "unknown"
+	}
+	return info.Main.Version
 }
