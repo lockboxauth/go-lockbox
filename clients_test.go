@@ -900,3 +900,329 @@ func TestRedirectURIsCreate_conflictingID(t *testing.T) {
 		t.Errorf("Expected error %T, got %v instead", ErrRedirectURIIDConflict{}, err)
 	}
 }
+
+func TestRedirectURIsList_success(t *testing.T) {
+	t.Parallel()
+	log := yall.New(testinglog.New(t, yall.Debug))
+	ctx := yall.InContext(context.Background(), log)
+
+	createdAt := time.Now().Round(time.Second)
+	createdAtStamp := createdAt.Format(time.RFC3339)
+	createdBy := "testuser"
+
+	id, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatalf("Error generating URI ID: %s", err)
+	}
+
+	id2, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatalf("Error generating URI ID: %s", err)
+	}
+
+	clientID, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatalf("Error generating client ID: %s", err)
+	}
+
+	hmacOpts := HMACAuth{
+		MaxSkew: time.Minute,
+		OrgKey:  "LOCKBOXTEST",
+		Key:     "testkey",
+		Secret:  []byte("mysecrethmackey"),
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		checkURL(t, r, "/clients/v1/"+url.PathEscape(clientID)+"/redirectURIs")
+		checkMethod(t, r, http.MethodGet)
+		checkHMACAuthorization(t, r, hmacOpts)
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"redirectURIs": [{"ID": "` + id + `", "URI": "https://lockbox.dev/", "isBaseURI": true, "createdAt": "` + createdAtStamp + `", "createdBy": "` + createdBy + `", "createdByIP": "1.1.1.1", "clientID": "` + clientID + `"}, {"ID": "` + id2 + `", "URI": "https://impractical.co/auth", "isBaseURI": false, "createdAt": "` + createdAtStamp + `", "createdBy": "` + createdBy + `", "createdByIP": "1.1.1.1", "clientID": "` + clientID + `"}]}`))
+	}))
+	defer server.Close()
+
+	client := testClient(ctx, t, server.URL, HMACCredentials{
+		Clients: hmacOpts,
+	})
+
+	results, err := client.Clients.ListRedirectURIs(ctx, clientID)
+	if err != nil {
+		t.Fatalf("Error creating redirect URIs: %s", err)
+	}
+	if diff := cmp.Diff([]RedirectURI{
+		{
+			ID:          id,
+			URI:         "https://lockbox.dev/",
+			IsBaseURI:   true,
+			ClientID:    clientID,
+			CreatedAt:   createdAt,
+			CreatedBy:   createdBy,
+			CreatedByIP: "1.1.1.1",
+		},
+		{
+			ID:          id2,
+			URI:         "https://impractical.co/auth",
+			IsBaseURI:   false,
+			ClientID:    clientID,
+			CreatedAt:   createdAt,
+			CreatedBy:   createdBy,
+			CreatedByIP: "1.1.1.1",
+		},
+	}, results); diff != "" {
+		t.Errorf("Redirect URI mismatch (-wanted, +got): %s", diff)
+	}
+}
+
+func TestRedirectURIsList_missingID(t *testing.T) {
+	t.Parallel()
+	log := yall.New(testinglog.New(t, yall.Debug))
+	ctx := yall.InContext(context.Background(), log)
+
+	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
+	defer server.Close()
+
+	client := testClient(ctx, t, server.URL, HMACCredentials{
+		Clients: HMACAuth{
+			MaxSkew: time.Minute,
+			OrgKey:  "LOCKBOXTEST",
+			Key:     "testkey",
+			Secret:  []byte("mysecrethmackey"),
+		},
+	})
+
+	_, err := client.Clients.ListRedirectURIs(ctx, "")
+	if err != ErrClientRequestMissingID {
+		t.Errorf("Expected error %v, got %v instead", ErrClientRequestMissingID, err)
+	}
+}
+
+func TestRedirectURIsList_errors(t *testing.T) {
+	t.Parallel()
+	tests := map[string]errorTest{
+		"unexpectedError": {
+			status: http.StatusBadRequest,
+			body:   []byte(`{"errors": [{"error": "foo", "field": "/bar"}]}`),
+			err:    ErrUnexpectedError,
+		},
+		"serverError": {
+			status: http.StatusInternalServerError,
+			body:   []byte(`{"errors": [{"error": "act_of_god"}]}`),
+			err:    ErrServerError,
+		},
+		"invalidCredentials": {
+			status: http.StatusUnauthorized,
+			body:   []byte(`{"errors":[{"error": "access_denied", "header": "Authorization"}]}`),
+			err:    ErrUnauthorized,
+		},
+		"notFound": {
+			status: http.StatusNotFound,
+			body:   []byte(`{"errors":[{"error": "not_found", "param": "id"}]}`),
+			err:    ErrClientNotFound,
+		},
+	}
+
+	for name, test := range tests {
+		name, test := name, test
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			log := yall.New(testinglog.New(t, yall.Debug))
+			ctx := yall.InContext(context.Background(), log)
+
+			clientUUID, err := uuid.GenerateUUID()
+			if err != nil {
+				t.Fatalf("Error generating client ID: %s", err)
+			}
+
+			hmacOpts := HMACAuth{
+				MaxSkew: time.Minute,
+				OrgKey:  "LOCKBOXTEST",
+				Key:     "testkey",
+				Secret:  []byte("mysecrethmackey"),
+			}
+
+			server := staticResponseServer(test.status, test.body)
+			defer server.Close()
+
+			client := testClient(ctx, t, server.URL, HMACCredentials{
+				Clients: hmacOpts,
+			})
+
+			_, err = client.Clients.ListRedirectURIs(ctx, clientUUID)
+			if err != test.err {
+				t.Errorf("Expected error %v, got %v instead", test.err, err)
+			}
+		})
+	}
+}
+
+func TestRedirectURIsDelete_success(t *testing.T) {
+	t.Parallel()
+	log := yall.New(testinglog.New(t, yall.Debug))
+	ctx := yall.InContext(context.Background(), log)
+
+	createdAt := time.Now().Round(time.Second)
+	createdAtStamp := createdAt.Format(time.RFC3339)
+	createdBy := "testuser"
+
+	id, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatalf("Error generating URI ID: %s", err)
+	}
+
+	clientID, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatalf("Error generating client ID: %s", err)
+	}
+
+	hmacOpts := HMACAuth{
+		MaxSkew: time.Minute,
+		OrgKey:  "LOCKBOXTEST",
+		Key:     "testkey",
+		Secret:  []byte("mysecrethmackey"),
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		checkURL(t, r, "/clients/v1/"+url.PathEscape(clientID)+"/redirectURIs/"+url.PathEscape(id))
+		checkMethod(t, r, http.MethodDelete)
+		checkHMACAuthorization(t, r, hmacOpts)
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"redirectURIs": [{"ID": "` + id + `", "URI": "https://lockbox.dev/", "isBaseURI": true, "createdAt": "` + createdAtStamp + `", "createdBy": "` + createdBy + `", "createdByIP": "1.1.1.1", "clientID": "` + clientID + `"}]}`))
+	}))
+	defer server.Close()
+
+	client := testClient(ctx, t, server.URL, HMACCredentials{
+		Clients: hmacOpts,
+	})
+
+	err = client.Clients.DeleteRedirectURI(ctx, clientID, id)
+	if err != nil {
+		t.Fatalf("Error creating redirect URIs: %s", err)
+	}
+}
+
+func TestRedirectURIsDelete_missingID(t *testing.T) {
+	t.Parallel()
+	log := yall.New(testinglog.New(t, yall.Debug))
+	ctx := yall.InContext(context.Background(), log)
+
+	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
+	defer server.Close()
+
+	client := testClient(ctx, t, server.URL, HMACCredentials{
+		Clients: HMACAuth{
+			MaxSkew: time.Minute,
+			OrgKey:  "LOCKBOXTEST",
+			Key:     "testkey",
+			Secret:  []byte("mysecrethmackey"),
+		},
+	})
+
+	clientID, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatalf("Error generating client ID: %s", err)
+	}
+
+	err = client.Clients.DeleteRedirectURI(ctx, clientID, "")
+	if err != ErrClientRequestMissingRedirectURIID {
+		t.Errorf("Expected error %v, got %v instead", ErrClientRequestMissingRedirectURIID, err)
+	}
+}
+
+func TestRedirectURIsDelete_missingURIID(t *testing.T) {
+	t.Parallel()
+	log := yall.New(testinglog.New(t, yall.Debug))
+	ctx := yall.InContext(context.Background(), log)
+
+	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
+	defer server.Close()
+
+	client := testClient(ctx, t, server.URL, HMACCredentials{
+		Clients: HMACAuth{
+			MaxSkew: time.Minute,
+			OrgKey:  "LOCKBOXTEST",
+			Key:     "testkey",
+			Secret:  []byte("mysecrethmackey"),
+		},
+	})
+
+	id, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatalf("Error generating client ID: %s", err)
+	}
+
+	err = client.Clients.DeleteRedirectURI(ctx, "", id)
+	if err != ErrClientRequestMissingID {
+		t.Errorf("Expected error %v, got %v instead", ErrClientRequestMissingID, err)
+	}
+}
+
+func TestRedirectURIsDelete_errors(t *testing.T) {
+	t.Parallel()
+	tests := map[string]errorTest{
+		"unexpectedError": {
+			status: http.StatusBadRequest,
+			body:   []byte(`{"errors": [{"error": "foo", "field": "/bar"}]}`),
+			err:    ErrUnexpectedError,
+		},
+		"serverError": {
+			status: http.StatusInternalServerError,
+			body:   []byte(`{"errors": [{"error": "act_of_god"}]}`),
+			err:    ErrServerError,
+		},
+		"invalidCredentials": {
+			status: http.StatusUnauthorized,
+			body:   []byte(`{"errors":[{"error": "access_denied", "header": "Authorization"}]}`),
+			err:    ErrUnauthorized,
+		},
+		"clientNotFound": {
+			status: http.StatusNotFound,
+			body:   []byte(`{"errors":[{"error": "not_found", "param": "id"}]}`),
+			err:    ErrClientNotFound,
+		},
+		"notFound": {
+			status: http.StatusNotFound,
+			body:   []byte(`{"errors":[{"error": "not_found", "param": "uri"}]}`),
+			err:    ErrClientRedirectURINotFound,
+		},
+	}
+
+	for name, test := range tests {
+		name, test := name, test
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			log := yall.New(testinglog.New(t, yall.Debug))
+			ctx := yall.InContext(context.Background(), log)
+
+			clientUUID, err := uuid.GenerateUUID()
+			if err != nil {
+				t.Fatalf("Error generating client ID: %s", err)
+			}
+
+			id, err := uuid.GenerateUUID()
+			if err != nil {
+				t.Fatalf("Error generating redirect URI ID: %s", err)
+			}
+
+			hmacOpts := HMACAuth{
+				MaxSkew: time.Minute,
+				OrgKey:  "LOCKBOXTEST",
+				Key:     "testkey",
+				Secret:  []byte("mysecrethmackey"),
+			}
+
+			server := staticResponseServer(test.status, test.body)
+			defer server.Close()
+
+			client := testClient(ctx, t, server.URL, HMACCredentials{
+				Clients: hmacOpts,
+			})
+
+			err = client.Clients.DeleteRedirectURI(ctx, clientUUID, id)
+			if err != test.err {
+				t.Errorf("Expected error %v, got %v instead", test.err, err)
+			}
+		})
+	}
+}

@@ -350,9 +350,6 @@ func (c ClientsService) ListRedirectURIs(ctx context.Context, id string) ([]Redi
 	if resp.Errors.Contains(serverError) {
 		return nil, ErrServerError
 	}
-	if resp.Errors.Contains(invalidFormatError) {
-		return nil, ErrInvalidFormatError
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:   requestErrAccessDenied,
 		Header: "Authorization",
@@ -361,12 +358,6 @@ func (c ClientsService) ListRedirectURIs(ctx context.Context, id string) ([]Redi
 	}
 
 	// req specific checks
-	if resp.Errors.Contains(RequestError{
-		Slug:  requestErrMissing,
-		Param: "id",
-	}) {
-		return nil, ErrClientRequestMissingID
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:  requestErrNotFound,
 		Param: "id",
@@ -501,9 +492,6 @@ func (c ClientsService) DeleteRedirectURI(ctx context.Context, clientID, uriID s
 	if resp.Errors.Contains(serverError) {
 		return ErrServerError
 	}
-	if resp.Errors.Contains(invalidFormatError) {
-		return ErrInvalidFormatError
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:   requestErrAccessDenied,
 		Header: "Authorization",
@@ -512,18 +500,6 @@ func (c ClientsService) DeleteRedirectURI(ctx context.Context, clientID, uriID s
 	}
 
 	// req specific checks
-	if resp.Errors.Contains(RequestError{
-		Slug:  requestErrMissing,
-		Param: "id",
-	}) {
-		return ErrClientRequestMissingID
-	}
-	if resp.Errors.Contains(RequestError{
-		Slug:  requestErrMissing,
-		Param: "uri",
-	}) {
-		return ErrClientRequestMissingRedirectURIID
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:  requestErrNotFound,
 		Param: "id",
