@@ -429,12 +429,20 @@ func (c ClientsService) CreateRedirectURIs(ctx context.Context, id string, uris 
 	}
 
 	// req specific checks
+	if resp.Errors.Contains(RequestError{
+		Slug:  requestErrNotFound,
+		Param: "id",
+	}) {
+		return nil, ErrClientNotFound
+	}
 	if matches := resp.Errors.FieldMatches(requestErrMissing, redirectURIURIIndexRegexp); matches != nil {
 		if len(matches) > 0 && len(matches[0]) > 1 {
 			posStr := matches[0][1]
 			pos, err := strconv.Atoi(posStr)
-			if err != nil || len(uris) <= pos {
+			if err != nil {
 				yall.FromContext(ctx).WithError(err).WithField("field_value", matches[0][0]).Error("error parsing which redirect URI caused an error")
+			} else if len(uris) <= pos {
+				yall.FromContext(ctx).WithField("field_value", matches[0][0]).Error("error parsing which redirect URI caused an error; returned error points to a redirect URI that wasn't passed")
 			} else {
 				return nil, ErrRedirectURIURIMissing(uris[pos])
 			}
@@ -444,8 +452,10 @@ func (c ClientsService) CreateRedirectURIs(ctx context.Context, id string, uris 
 		if len(matches) > 0 && len(matches[0]) > 1 {
 			posStr := matches[0][1]
 			pos, err := strconv.Atoi(posStr)
-			if err != nil || len(uris) <= pos {
+			if err != nil {
 				yall.FromContext(ctx).WithError(err).WithField("field_value", matches[0][0]).Error("error parsing which redirect URI caused an error")
+			} else if len(uris) <= pos {
+				yall.FromContext(ctx).WithField("field_value", matches[0][0]).Error("error parsing which redirect URI caused an error; returned error points to a redirect URI that wasn't passed")
 			} else {
 				return nil, ErrRedirectURIIDConflict(uris[pos])
 			}
