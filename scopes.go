@@ -15,6 +15,11 @@ import (
 
 const (
 	scopesServiceDefaultBasePath = "/scopes/v1/"
+
+	ScopesPolicyDenyAll      = "DENY_ALL"
+	ScopesPolicyDefaultDeny  = "DEFAULT_DENY"
+	ScopesPolicyAllowAll     = "ALLOW_ALL"
+	ScopesPolicyDefaultAllow = "DEFAULT_ALLOW"
 )
 
 var (
@@ -249,7 +254,7 @@ func (s ScopesService) Get(ctx context.Context, id string) (Scope, error) {
 	if id == "" {
 		return Scope{}, ErrScopeRequestMissingID
 	}
-	req, err := s.client.NewRequest(ctx, http.MethodGet, s.buildURL("/"+id), nil)
+	req, err := s.client.NewRequest(ctx, http.MethodGet, s.buildURL("/"+url.PathEscape(id)), nil)
 	if err != nil {
 		return Scope{}, fmt.Errorf("error constructing request: %w", err)
 	}
@@ -271,9 +276,6 @@ func (s ScopesService) Get(ctx context.Context, id string) (Scope, error) {
 	if resp.Errors.Contains(serverError) {
 		return Scope{}, ErrServerError
 	}
-	if resp.Errors.Contains(invalidFormatError) {
-		return Scope{}, ErrInvalidFormatError
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:   requestErrAccessDenied,
 		Header: "Authorization",
@@ -282,12 +284,6 @@ func (s ScopesService) Get(ctx context.Context, id string) (Scope, error) {
 	}
 
 	// req specific checks
-	if resp.Errors.Contains(RequestError{
-		Slug:  requestErrMissing,
-		Param: "id",
-	}) {
-		return Scope{}, ErrScopeRequestMissingID
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:  requestErrNotFound,
 		Param: "id",
