@@ -349,3 +349,130 @@ func TestScopesGet_missingID(t *testing.T) {
 		t.Errorf("Expected error %v, got %v instead", ErrScopeRequestMissingID, err)
 	}
 }
+
+func TestScopesDelete_success(t *testing.T) {
+	t.Parallel()
+	log := yall.New(testinglog.New(t, yall.Debug))
+	ctx := yall.InContext(context.Background(), log)
+
+	userUUID, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatalf("error generating user UUID: %s", err)
+	}
+
+	clientUUID, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatalf("error generating client UUID: %s", err)
+	}
+
+	hmacOpts := HMACAuth{
+		MaxSkew: time.Minute,
+		OrgKey:  "LOCKBOXTEST",
+		Key:     "testkey",
+		Secret:  []byte("mysecrethmackey"),
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		checkURL(t, r, "/scopes/v1/"+url.PathEscape("https://test.lockbox.dev/basic/scope"))
+		checkMethod(t, r, http.MethodDelete)
+		checkHMACAuthorization(t, r, hmacOpts)
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_ALLOW", "userExceptions": ["` + userUUID + `"], "clientPolicy": "DEFAULT_DENY", "clientExceptions": ["` + clientUUID + `"], "isDefault": true}]}`))
+	}))
+	defer server.Close()
+
+	client := testClient(ctx, t, server.URL, HMACCredentials{
+		Scopes: hmacOpts,
+	})
+
+	err = client.Scopes.Delete(ctx, "https://test.lockbox.dev/basic/scope")
+	if err != nil {
+		t.Fatalf("Unexpected error retrieving client: %s", err)
+	}
+}
+
+func TestScopesDelete_errors(t *testing.T) {
+	t.Parallel()
+	tests := map[string]errorTest{
+		"unexpectedError": {
+			status: http.StatusBadRequest,
+			body:   []byte(`{"errors": [{"error": "foo", "field": "/bar"}]}`),
+			err:    ErrUnexpectedError,
+		},
+		"serverError": {
+			status: http.StatusInternalServerError,
+			body:   []byte(`{"errors":[{"error": "act_of_god"}]}`),
+			err:    ErrServerError,
+		},
+		"invalidCredentials": {
+			status: http.StatusUnauthorized,
+			body:   []byte(`{"errors": [{"error": "access_denied", "header": "Authorization"}]}`),
+			err:    ErrUnauthorized,
+		},
+		"notFound": {
+			status: http.StatusNotFound,
+			body:   []byte(`{"errors":[{"error": "not_found", "param": "id"}]}`),
+			err:    ErrScopeNotFound,
+		},
+	}
+
+	for name, test := range tests {
+		name, test := name, test
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			log := yall.New(testinglog.New(t, yall.Debug))
+			ctx := yall.InContext(context.Background(), log)
+
+			server := staticResponseServer(test.status, test.body)
+			defer server.Close()
+
+			hmacOpts := HMACAuth{
+				MaxSkew: time.Minute,
+				OrgKey:  "LOCKBOXTEST",
+				Key:     "testkey",
+				Secret:  []byte("mysecrethmackey"),
+			}
+
+			client := testClient(ctx, t, server.URL, HMACCredentials{
+				Scopes: hmacOpts,
+			})
+
+			id, err := uuid.GenerateUUID()
+			if err != nil {
+				t.Errorf("error generating UUID: %s", err)
+				return
+			}
+
+			err = client.Scopes.Delete(ctx, id)
+			if err != test.err {
+				t.Errorf("Expected error %v, got %v instead", test.err, err)
+			}
+		})
+	}
+}
+
+func TestScopesDelete_missingID(t *testing.T) {
+	t.Parallel()
+	log := yall.New(testinglog.New(t, yall.Debug))
+	ctx := yall.InContext(context.Background(), log)
+
+	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
+	defer server.Close()
+
+	hmacOpts := HMACAuth{
+		MaxSkew: time.Minute,
+		OrgKey:  "LOCKBOXTEST",
+		Key:     "testkey",
+		Secret:  []byte("mysecrethmackey"),
+	}
+
+	client := testClient(ctx, t, server.URL, HMACCredentials{
+		Scopes: hmacOpts,
+	})
+
+	err := client.Scopes.Delete(ctx, "")
+	if err != ErrScopeRequestMissingID {
+		t.Errorf("Expected error %v, got %v instead", ErrScopeRequestMissingID, err)
+	}
+}
