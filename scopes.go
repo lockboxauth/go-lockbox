@@ -308,7 +308,7 @@ func (s ScopesService) Delete(ctx context.Context, id string) error {
 	if id == "" {
 		return ErrScopeRequestMissingID
 	}
-	req, err := s.client.NewRequest(ctx, http.MethodDelete, s.buildURL("/"+id), nil)
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, s.buildURL("/"+url.PathEscape(id)), nil)
 	if err != nil {
 		return fmt.Errorf("error constructing request: %w", err)
 	}
@@ -330,9 +330,6 @@ func (s ScopesService) Delete(ctx context.Context, id string) error {
 	if resp.Errors.Contains(serverError) {
 		return ErrServerError
 	}
-	if resp.Errors.Contains(invalidFormatError) {
-		return ErrInvalidFormatError
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:   requestErrAccessDenied,
 		Header: "Authorization",
@@ -341,12 +338,6 @@ func (s ScopesService) Delete(ctx context.Context, id string) error {
 	}
 
 	// req specific checks
-	if resp.Errors.Contains(RequestError{
-		Slug:  requestErrMissing,
-		Param: "id",
-	}) {
-		return ErrScopeRequestMissingID
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:  requestErrNotFound,
 		Param: "id",
