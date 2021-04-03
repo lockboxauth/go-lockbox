@@ -185,7 +185,7 @@ func (s ScopesService) Update(ctx context.Context, id string, change ScopeChange
 		return Scope{}, fmt.Errorf("error serialising scope change: %w", err)
 	}
 	buf := bytes.NewBuffer(b)
-	req, err := s.client.NewRequest(ctx, http.MethodPatch, s.buildURL("/"+id), buf)
+	req, err := s.client.NewRequest(ctx, http.MethodPatch, s.buildURL("/"+url.PathEscape(id)), buf)
 	if err != nil {
 		return Scope{}, fmt.Errorf("error constructing request: %w", err)
 	}
