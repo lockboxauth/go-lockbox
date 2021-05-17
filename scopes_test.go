@@ -37,7 +37,7 @@ func TestScopesCreate_success(t *testing.T) {
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_DENY", "userExceptions": ["%s"], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": ["%s"], "isDefault": true}]}`, userID, clientID)))
+		mustWrite(t, w, []byte(fmt.Sprintf(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_DENY", "userExceptions": ["%s"], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": ["%s"], "isDefault": true}]}`, userID, clientID)))
 	}))
 	defer server.Close()
 
@@ -80,7 +80,7 @@ func TestScopesCreate_noScopes(t *testing.T) {
 		Secret:  []byte("mysecretkey"),
 	}
 
-	server := staticResponseServer(http.StatusOK, []byte(`{}`))
+	server := staticResponseServer(t, http.StatusOK, []byte(`{}`))
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, HMACCredentials{
@@ -167,7 +167,7 @@ func TestScopesCreate_errors(t *testing.T) {
 				Secret:  []byte("mysecrethmackey"),
 			}
 
-			server := staticResponseServer(test.status, test.body)
+			server := staticResponseServer(t, test.status, test.body)
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, HMACCredentials{
@@ -209,7 +209,7 @@ func TestScopesGet_success(t *testing.T) {
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_ALLOW", "userExceptions": ["` + userUUID + `"], "clientPolicy": "DEFAULT_DENY", "clientExceptions": ["` + clientUUID + `"], "isDefault": true}]}`))
+		mustWrite(t, w, []byte(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_ALLOW", "userExceptions": ["`+userUUID+`"], "clientPolicy": "DEFAULT_DENY", "clientExceptions": ["`+clientUUID+`"], "isDefault": true}]}`))
 	}))
 	defer server.Close()
 
@@ -272,7 +272,7 @@ func TestScopesGet_errors(t *testing.T) {
 				Secret:  []byte("mysecrethmackey"),
 			}
 
-			server := staticResponseServer(test.status, test.body)
+			server := staticResponseServer(t, test.status, test.body)
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, HMACCredentials{
@@ -292,7 +292,7 @@ func TestScopesGet_noScopes(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusOK, []byte(`{}`))
+	server := staticResponseServer(t, http.StatusOK, []byte(`{}`))
 	defer server.Close()
 
 	hmacOpts := HMACAuth{
@@ -317,7 +317,7 @@ func TestScopesGet_missingID(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
+	server := staticResponseServer(t, http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
 	defer server.Close()
 
 	hmacOpts := HMACAuth{
@@ -358,7 +358,7 @@ func TestScopesUpdate_full(t *testing.T) {
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_DENY", "userExceptions": ["%s"], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": ["%s"], "isDefault": true}]}`, userID, clientID)))
+		mustWrite(t, w, []byte(fmt.Sprintf(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_DENY", "userExceptions": ["%s"], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": ["%s"], "isDefault": true}]}`, userID, clientID)))
 	}))
 	defer server.Close()
 
@@ -412,7 +412,7 @@ func TestScopesUpdate_zeroValues(t *testing.T) {
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_DENY", "userExceptions": [], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": [], "isDefault": false}]}`))
+		mustWrite(t, w, []byte(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_DENY", "userExceptions": [], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": [], "isDefault": false}]}`))
 	}))
 	defer server.Close()
 
@@ -469,7 +469,7 @@ func TestScopesUpdate_defaultOnly(t *testing.T) {
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_DENY", "userExceptions": ["%s"], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": ["%s"], "isDefault": false}]}`, userID, clientID)))
+		mustWrite(t, w, []byte(fmt.Sprintf(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_DENY", "userExceptions": ["%s"], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": ["%s"], "isDefault": false}]}`, userID, clientID)))
 	}))
 	defer server.Close()
 
@@ -515,7 +515,7 @@ func TestScopesUpdate_clientPolicyOnly(t *testing.T) {
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_DENY", "userExceptions": [], "clientPolicy": "DEFAULT_DENY", "clientExceptions": [], "isDefault": false}]}`)))
+		mustWrite(t, w, []byte(fmt.Sprintf(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_DENY", "userExceptions": [], "clientPolicy": "DEFAULT_DENY", "clientExceptions": [], "isDefault": false}]}`)))
 	}))
 	defer server.Close()
 
@@ -554,7 +554,7 @@ func TestScopesUpdate_noScopes(t *testing.T) {
 		Secret:  []byte("mysecretkey"),
 	}
 
-	server := staticResponseServer(http.StatusOK, []byte(`{}`))
+	server := staticResponseServer(t, http.StatusOK, []byte(`{}`))
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, HMACCredentials{
@@ -624,7 +624,7 @@ func TestScopesUpdate_errors(t *testing.T) {
 				Secret:  []byte("mysecrethmackey"),
 			}
 
-			server := staticResponseServer(test.status, test.body)
+			server := staticResponseServer(t, test.status, test.body)
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, HMACCredentials{
@@ -648,7 +648,7 @@ func TestScopesUpdate_missingID(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
+	server := staticResponseServer(t, http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
 	defer server.Close()
 
 	hmacOpts := HMACAuth{
@@ -692,7 +692,7 @@ func TestScopesDelete_success(t *testing.T) {
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_ALLOW", "userExceptions": ["` + userUUID + `"], "clientPolicy": "DEFAULT_DENY", "clientExceptions": ["` + clientUUID + `"], "isDefault": true}]}`))
+		mustWrite(t, w, []byte(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_ALLOW", "userExceptions": ["`+userUUID+`"], "clientPolicy": "DEFAULT_DENY", "clientExceptions": ["`+clientUUID+`"], "isDefault": true}]}`))
 	}))
 	defer server.Close()
 
@@ -738,7 +738,7 @@ func TestScopesDelete_errors(t *testing.T) {
 			log := yall.New(testinglog.New(t, yall.Debug))
 			ctx := yall.InContext(context.Background(), log)
 
-			server := staticResponseServer(test.status, test.body)
+			server := staticResponseServer(t, test.status, test.body)
 			defer server.Close()
 
 			hmacOpts := HMACAuth{
@@ -765,7 +765,7 @@ func TestScopesDelete_missingID(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
+	server := staticResponseServer(t, http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
 	defer server.Close()
 
 	hmacOpts := HMACAuth{
@@ -808,7 +808,7 @@ func TestScopesListDefault_success(t *testing.T) {
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_ALLOW", "userExceptions": ["` + userUUID + `"], "clientPolicy": "DEFAULT_DENY", "clientExceptions": ["` + clientUUID + `"], "isDefault": true}, {"id": "https://test.lockbox.dev/basic/scope2", "userPolicy": "DEFAULT_DENY", "userExceptions": ["` + user2UUID + `"], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": ["` + client2UUID + `"], "isDefault": true}]}`))
+		mustWrite(t, w, []byte(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_ALLOW", "userExceptions": ["`+userUUID+`"], "clientPolicy": "DEFAULT_DENY", "clientExceptions": ["`+clientUUID+`"], "isDefault": true}, {"id": "https://test.lockbox.dev/basic/scope2", "userPolicy": "DEFAULT_DENY", "userExceptions": ["`+user2UUID+`"], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": ["`+client2UUID+`"], "isDefault": true}]}`))
 	}))
 	defer server.Close()
 
@@ -876,7 +876,7 @@ func TestScopesListDefault_errors(t *testing.T) {
 				Secret:  []byte("mysecrethmackey"),
 			}
 
-			server := staticResponseServer(test.status, test.body)
+			server := staticResponseServer(t, test.status, test.body)
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, HMACCredentials{
