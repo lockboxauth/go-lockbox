@@ -13,8 +13,6 @@ import (
 
 const (
 	requestErrAccessDenied  = "access_denied"
-	requestErrInsufficient  = "insufficient"
-	requestErrOverflow      = "overflow"
 	requestErrInvalidValue  = "invalid_value"
 	requestErrInvalidFormat = "invalid_format"
 	requestErrMissing       = "missing"
