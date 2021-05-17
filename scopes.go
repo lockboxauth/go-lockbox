@@ -16,9 +16,20 @@ import (
 const (
 	scopesServiceDefaultBasePath = "/scopes/v1/"
 
-	ScopesPolicyDenyAll      = "DENY_ALL"
-	ScopesPolicyDefaultDeny  = "DEFAULT_DENY"
-	ScopesPolicyAllowAll     = "ALLOW_ALL"
+	// ScopesPolicyDenyAll is a constant for a scopes policy that denies
+	// all use of the scope, with no exceptions.
+	ScopesPolicyDenyAll = "DENY_ALL"
+
+	// ScopesPolicyDefaultDeny is a constant for a scopes policy that
+	// denies all use of the scope by default, with exceptions.
+	ScopesPolicyDefaultDeny = "DEFAULT_DENY"
+
+	// ScopesPolicyAllowAll is a constant for a scopes policy that allows
+	// all use of the scope, with no exceptions.
+	ScopesPolicyAllowAll = "ALLOW_ALL"
+
+	// ScopesPolicyDefaultAllow is a constant for a scopes policy that
+	// allows all use of the scope by default, with exceptions.
 	ScopesPolicyDefaultAllow = "DEFAULT_ALLOW"
 )
 
