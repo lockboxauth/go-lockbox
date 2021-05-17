@@ -73,7 +73,7 @@ type APIClient struct {
 	CreatedAt    time.Time `json:"createdAt,omitempty"`
 	CreatedBy    string    `json:"createdBy,omitempty"`
 	CreatedByIP  string    `json:"createdByIP,omitempty"`
-	Secret       string    `json:"secret,omitempty,omitempty"`
+	Secret       string    `json:"secret,omitempty"`
 }
 
 // RedirectURI is a URI that is registered to an APIClient as a URI that can be
