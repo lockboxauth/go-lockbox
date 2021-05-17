@@ -784,3 +784,109 @@ func TestScopesDelete_missingID(t *testing.T) {
 		t.Errorf("Expected error %v, got %v instead", ErrScopeRequestMissingID, err)
 	}
 }
+
+func TestScopesListDefault_success(t *testing.T) {
+	t.Parallel()
+	log := yall.New(testinglog.New(t, yall.Debug))
+	ctx := yall.InContext(context.Background(), log)
+
+	userUUID := uuidOrFail(t)
+	clientUUID := uuidOrFail(t)
+	user2UUID := uuidOrFail(t)
+	client2UUID := uuidOrFail(t)
+
+	hmacOpts := HMACAuth{
+		MaxSkew: time.Minute,
+		OrgKey:  "LOCKBOXTEST",
+		Key:     "testkey",
+		Secret:  []byte("mysecrethmackey"),
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		checkURL(t, r, "/scopes/v1/?default=true")
+		checkMethod(t, r, http.MethodGet)
+		checkHMACAuthorization(t, r, hmacOpts)
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_ALLOW", "userExceptions": ["` + userUUID + `"], "clientPolicy": "DEFAULT_DENY", "clientExceptions": ["` + clientUUID + `"], "isDefault": true}, {"id": "https://test.lockbox.dev/basic/scope2", "userPolicy": "DEFAULT_DENY", "userExceptions": ["` + user2UUID + `"], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": ["` + client2UUID + `"], "isDefault": true}]}`))
+	}))
+	defer server.Close()
+
+	client := testClient(ctx, t, server.URL, HMACCredentials{
+		Scopes: hmacOpts,
+	})
+
+	scopes, err := client.Scopes.ListDefault(ctx)
+	if err != nil {
+		t.Fatalf("Unexpected error listing default scopes: %s", err)
+	}
+	if diff := cmp.Diff([]Scope{
+		{
+			ID:               "https://test.lockbox.dev/basic/scope",
+			UserPolicy:       ScopesPolicyDefaultAllow,
+			UserExceptions:   []string{userUUID},
+			ClientPolicy:     ScopesPolicyDefaultDeny,
+			ClientExceptions: []string{clientUUID},
+			IsDefault:        true,
+		},
+		{
+			ID:               "https://test.lockbox.dev/basic/scope2",
+			UserPolicy:       ScopesPolicyDefaultDeny,
+			UserExceptions:   []string{user2UUID},
+			ClientPolicy:     ScopesPolicyDefaultAllow,
+			ClientExceptions: []string{client2UUID},
+			IsDefault:        true,
+		},
+	}, scopes); diff != "" {
+		t.Errorf("Scopes mismatch (-wanted, +got): %s", diff)
+	}
+}
+
+func TestScopesListDefault_errors(t *testing.T) {
+	t.Parallel()
+	tests := map[string]errorTest{
+		"unexpectedError": {
+			status: http.StatusBadRequest,
+			body:   []byte(`{"errors": [{"error": "foo", "field": "/bar"}]}`),
+			err:    ErrUnexpectedError,
+		},
+		"serverError": {
+			status: http.StatusInternalServerError,
+			body:   []byte(`{"errors": [{"error": "act_of_god"}]}`),
+			err:    ErrServerError,
+		},
+		"invalidCredentials": {
+			status: http.StatusUnauthorized,
+			body:   []byte(`{"errors":[{"error": "access_denied", "header": "Authorization"}]}`),
+			err:    ErrUnauthorized,
+		},
+	}
+
+	for name, test := range tests {
+		name, test := name, test
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			log := yall.New(testinglog.New(t, yall.Debug))
+			ctx := yall.InContext(context.Background(), log)
+
+			hmacOpts := HMACAuth{
+				MaxSkew: time.Minute,
+				OrgKey:  "LOCKBOXTEST",
+				Key:     "testkey",
+				Secret:  []byte("mysecrethmackey"),
+			}
+
+			server := staticResponseServer(test.status, test.body)
+			defer server.Close()
+
+			client := testClient(ctx, t, server.URL, HMACCredentials{
+				Scopes: hmacOpts,
+			})
+
+			_, err := client.Scopes.ListDefault(ctx)
+			if err != test.err {
+				t.Errorf("Expected error %v, got %v instead", test.err, err)
+			}
+		})
+	}
+}
