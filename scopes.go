@@ -429,10 +429,8 @@ func (s ScopesService) ListDefault(ctx context.Context) ([]Scope, error) {
 // The result will be a map with a key of the scope's ID and the value being
 // the Scope itself.
 func (s ScopesService) GetByIDs(ctx context.Context, ids []string) (map[string]Scope, error) {
-	var v url.Values
-	for _, id := range ids {
-		v["id"] = append(v["id"], id)
-	}
+	v := url.Values{}
+	v["id"] = append(v["id"], ids...)
 	req, err := s.client.NewRequest(ctx, http.MethodGet, s.buildURL("/?"+v.Encode()), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error constructing request: %w", err)
