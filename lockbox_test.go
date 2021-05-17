@@ -33,10 +33,17 @@ func uuidOrFail(t *testing.T) string {
 	return id
 }
 
-func staticResponseServer(code int, body []byte) *httptest.Server {
+func mustWrite(t *testing.T, w http.ResponseWriter, b []byte) {
+	_, err := w.Write(b)
+	if err != nil {
+		t.Errorf("Error writing response: %s", err)
+	}
+}
+
+func staticResponseServer(t *testing.T, code int, body []byte) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(code)
-		w.Write(body)
+		mustWrite(t, w, body)
 	}))
 }
 

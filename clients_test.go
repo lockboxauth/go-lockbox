@@ -42,7 +42,7 @@ func TestClientsCreate_success(t *testing.T) {
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf(`{"clients": [{"id": %q, "name": %q, "confidential": true, "createdAt": %q, "createdBy": %q, "createdByIP": %q, "secret": %q}]}`, id, nameUUID, createdAtStamp, createdBy, createdByIP, secret)))
+		mustWrite(t, w, []byte(fmt.Sprintf(`{"clients": [{"id": %q, "name": %q, "confidential": true, "createdAt": %q, "createdBy": %q, "createdByIP": %q, "secret": %q}]}`, id, nameUUID, createdAtStamp, createdBy, createdByIP, secret)))
 	}))
 	defer server.Close()
 
@@ -84,7 +84,7 @@ func TestClientsCreate_noClients(t *testing.T) {
 		Secret:  []byte("mysecrethmackey"),
 	}
 
-	server := staticResponseServer(http.StatusOK, []byte(`{}`))
+	server := staticResponseServer(t, http.StatusOK, []byte(`{}`))
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, HMACCredentials{
@@ -148,7 +148,7 @@ func TestClientsCreate_errors(t *testing.T) {
 				Secret:  []byte("mysecrethmackey"),
 			}
 
-			server := staticResponseServer(test.status, test.body)
+			server := staticResponseServer(t, test.status, test.body)
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, HMACCredentials{
@@ -192,7 +192,7 @@ func TestClientsGet_success(t *testing.T) {
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"clients": [{"id": "` + id + `", "name": "Test Client ` + nameUUID + `", "confidential": true, "createdAt": "` + timestamp + `", "createdBy": "` + createdByID + `", "createdByIP": "127.0.0.1", "secret": "my very secret client secret"}]}`))
+		mustWrite(t, w, []byte(`{"clients": [{"id": "`+id+`", "name": "Test Client `+nameUUID+`", "confidential": true, "createdAt": "`+timestamp+`", "createdBy": "`+createdByID+`", "createdByIP": "127.0.0.1", "secret": "my very secret client secret"}]}`))
 	}))
 	defer server.Close()
 
@@ -256,7 +256,7 @@ func TestClientsGet_errors(t *testing.T) {
 				Secret:  []byte("mysecrethmackey"),
 			}
 
-			server := staticResponseServer(test.status, test.body)
+			server := staticResponseServer(t, test.status, test.body)
 			defer server.Close()
 
 			id := uuidOrFail(t)
@@ -278,7 +278,7 @@ func TestClientsGet_noClients(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusOK, []byte(`{}`))
+	server := staticResponseServer(t, http.StatusOK, []byte(`{}`))
 	defer server.Close()
 
 	id := uuidOrFail(t)
@@ -305,7 +305,7 @@ func TestClientsGet_missingID(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
+	server := staticResponseServer(t, http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
 	defer server.Close()
 
 	hmacOpts := HMACAuth{
@@ -350,7 +350,7 @@ func TestClientsDelete_success(t *testing.T) {
 
 		w.WriteHeader(http.StatusOK)
 		// TODO: add redirect URIs, for completeness
-		w.Write([]byte(`{"clients": [{"id": "` + id + `", "name": "Test Client ` + nameUUID + `", "confidential": true, "createdAt": "` + timestamp + `", "createdBy": "` + createdByID + `", "createdByIP": "127.0.0.1", "secret": "my very secret client secret"}]}`))
+		mustWrite(t, w, []byte(`{"clients": [{"id": "`+id+`", "name": "Test Client `+nameUUID+`", "confidential": true, "createdAt": "`+timestamp+`", "createdBy": "`+createdByID+`", "createdByIP": "127.0.0.1", "secret": "my very secret client secret"}]}`))
 	}))
 	defer server.Close()
 
@@ -395,7 +395,7 @@ func TestClientsDelete_errors(t *testing.T) {
 			log := yall.New(testinglog.New(t, yall.Debug))
 			ctx := yall.InContext(context.Background(), log)
 
-			server := staticResponseServer(test.status, test.body)
+			server := staticResponseServer(t, test.status, test.body)
 			defer server.Close()
 
 			hmacOpts := HMACAuth{
@@ -424,7 +424,7 @@ func TestClientsDelete_missingID(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
+	server := staticResponseServer(t, http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, HMACCredentials{
@@ -467,7 +467,7 @@ func TestClientsResetSecret_success(t *testing.T) {
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"clients": [{"id": "` + id + `", "name": "Test Client ` + nameUUID + `", "confidential": true, "createdAt": "` + timestamp + `", "createdBy": "` + createdByID + `", "createdByIP": "127.0.0.1", "secret": "my very secret new client secret"}]}`))
+		mustWrite(t, w, []byte(`{"clients": [{"id": "`+id+`", "name": "Test Client `+nameUUID+`", "confidential": true, "createdAt": "`+timestamp+`", "createdBy": "`+createdByID+`", "createdByIP": "127.0.0.1", "secret": "my very secret new client secret"}]}`))
 	}))
 	defer server.Close()
 
@@ -523,7 +523,7 @@ func TestClientsResetSecret_errors(t *testing.T) {
 			log := yall.New(testinglog.New(t, yall.Debug))
 			ctx := yall.InContext(context.Background(), log)
 
-			server := staticResponseServer(test.status, test.body)
+			server := staticResponseServer(t, test.status, test.body)
 			defer server.Close()
 
 			hmacOpts := HMACAuth{
@@ -552,7 +552,7 @@ func TestClientsResetSecret_missingID(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
+	server := staticResponseServer(t, http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, HMACCredentials{
@@ -575,7 +575,7 @@ func TestClientsResetSecret_noClients(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusOK, []byte(`{}`))
+	server := staticResponseServer(t, http.StatusOK, []byte(`{}`))
 	defer server.Close()
 
 	id := uuidOrFail(t)
@@ -624,7 +624,7 @@ func TestRedirectURIsCreate_success(t *testing.T) {
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"redirectURIs": [{"ID": "` + id + `", "URI": "https://lockbox.dev/", "isBaseURI": true, "createdAt": "` + createdAtStamp + `", "createdBy": "` + createdBy + `", "createdByIP": "1.1.1.1", "clientID": "` + clientID + `"}, {"ID": "` + id2 + `", "URI": "https://impractical.co/auth", "isBaseURI": false, "createdAt": "` + createdAtStamp + `", "createdBy": "` + createdBy + `", "createdByIP": "1.1.1.1", "clientID": "` + clientID + `"}]}`))
+		mustWrite(t, w, []byte(`{"redirectURIs": [{"ID": "`+id+`", "URI": "https://lockbox.dev/", "isBaseURI": true, "createdAt": "`+createdAtStamp+`", "createdBy": "`+createdBy+`", "createdByIP": "1.1.1.1", "clientID": "`+clientID+`"}, {"ID": "`+id2+`", "URI": "https://impractical.co/auth", "isBaseURI": false, "createdAt": "`+createdAtStamp+`", "createdBy": "`+createdBy+`", "createdByIP": "1.1.1.1", "clientID": "`+clientID+`"}]}`))
 	}))
 	defer server.Close()
 
@@ -673,7 +673,7 @@ func TestRedirectURIsCreate_missingID(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
+	server := staticResponseServer(t, http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, HMACCredentials{
@@ -738,7 +738,7 @@ func TestRedirectURIsCreate_errors(t *testing.T) {
 				Secret:  []byte("mysecrethmackey"),
 			}
 
-			server := staticResponseServer(test.status, test.body)
+			server := staticResponseServer(t, test.status, test.body)
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, HMACCredentials{
@@ -764,7 +764,7 @@ func TestRedirectURIsCreate_missingURI(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "field": "/redirectURIs/0/URI"}]}`))
+	server := staticResponseServer(t, http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "field": "/redirectURIs/0/URI"}]}`))
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, HMACCredentials{
@@ -789,7 +789,7 @@ func TestRedirectURIsCreate_conflictingID(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "conflict", "field": "/redirectURIs/0/id"}]}`))
+	server := staticResponseServer(t, http.StatusBadRequest, []byte(`{"errors":[{"error": "conflict", "field": "/redirectURIs/0/id"}]}`))
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, HMACCredentials{
@@ -840,7 +840,7 @@ func TestRedirectURIsList_success(t *testing.T) {
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"redirectURIs": [{"ID": "` + id + `", "URI": "https://lockbox.dev/", "isBaseURI": true, "createdAt": "` + createdAtStamp + `", "createdBy": "` + createdBy + `", "createdByIP": "1.1.1.1", "clientID": "` + clientID + `"}, {"ID": "` + id2 + `", "URI": "https://impractical.co/auth", "isBaseURI": false, "createdAt": "` + createdAtStamp + `", "createdBy": "` + createdBy + `", "createdByIP": "1.1.1.1", "clientID": "` + clientID + `"}]}`))
+		mustWrite(t, w, []byte(`{"redirectURIs": [{"ID": "`+id+`", "URI": "https://lockbox.dev/", "isBaseURI": true, "createdAt": "`+createdAtStamp+`", "createdBy": "`+createdBy+`", "createdByIP": "1.1.1.1", "clientID": "`+clientID+`"}, {"ID": "`+id2+`", "URI": "https://impractical.co/auth", "isBaseURI": false, "createdAt": "`+createdAtStamp+`", "createdBy": "`+createdBy+`", "createdByIP": "1.1.1.1", "clientID": "`+clientID+`"}]}`))
 	}))
 	defer server.Close()
 
@@ -881,7 +881,7 @@ func TestRedirectURIsList_missingID(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
+	server := staticResponseServer(t, http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, HMACCredentials{
@@ -940,7 +940,7 @@ func TestRedirectURIsList_errors(t *testing.T) {
 				Secret:  []byte("mysecrethmackey"),
 			}
 
-			server := staticResponseServer(test.status, test.body)
+			server := staticResponseServer(t, test.status, test.body)
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, HMACCredentials{
@@ -980,7 +980,7 @@ func TestRedirectURIsDelete_success(t *testing.T) {
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"redirectURIs": [{"ID": "` + id + `", "URI": "https://lockbox.dev/", "isBaseURI": true, "createdAt": "` + createdAtStamp + `", "createdBy": "` + createdBy + `", "createdByIP": "1.1.1.1", "clientID": "` + clientID + `"}]}`))
+		mustWrite(t, w, []byte(`{"redirectURIs": [{"ID": "`+id+`", "URI": "https://lockbox.dev/", "isBaseURI": true, "createdAt": "`+createdAtStamp+`", "createdBy": "`+createdBy+`", "createdByIP": "1.1.1.1", "clientID": "`+clientID+`"}]}`))
 	}))
 	defer server.Close()
 
@@ -999,7 +999,7 @@ func TestRedirectURIsDelete_missingID(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
+	server := staticResponseServer(t, http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, HMACCredentials{
@@ -1024,7 +1024,7 @@ func TestRedirectURIsDelete_missingURIID(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
+	server := staticResponseServer(t, http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, HMACCredentials{
@@ -1091,7 +1091,7 @@ func TestRedirectURIsDelete_errors(t *testing.T) {
 				Secret:  []byte("mysecrethmackey"),
 			}
 
-			server := staticResponseServer(test.status, test.body)
+			server := staticResponseServer(t, test.status, test.body)
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, HMACCredentials{
