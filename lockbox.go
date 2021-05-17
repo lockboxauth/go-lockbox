@@ -311,13 +311,13 @@ func (c *Client) PrependToUserAgent(s string) {
 }
 
 // Do executes an *http.Request using the *http.Client associated with `c`.
-func (c Client) Do(req *http.Request) (*http.Response, error) {
+func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	return c.client.Do(req)
 }
 
 // NewRequest builds a new *http.Request against the specified `path`, using
 // the configured base URL of the client.
-func (c Client) NewRequest(ctx context.Context, method, path string, body io.Reader) (*http.Request, error) {
+func (c *Client) NewRequest(ctx context.Context, method, path string, body io.Reader) (*http.Request, error) {
 	u, err := url.Parse(path)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing path: %w", err)
@@ -331,7 +331,7 @@ func (c Client) NewRequest(ctx context.Context, method, path string, body io.Rea
 	return req, nil
 }
 
-func (c Client) buildUA() string {
+func (c *Client) buildUA() string {
 	ua := "go-lockbox/" + getVersion()
 	c.userAgentMu.RLock()
 	uaAppend := strings.TrimSpace(strings.Join(c.userAgentAppend, " "))
@@ -348,7 +348,7 @@ func (c Client) buildUA() string {
 
 // AddClientCredentials adds the configured client credentials to `r`,
 // authenticating the request. This is usually used for OAuth2 requests.
-func (c Client) AddClientCredentials(r *http.Request) error {
+func (c *Client) AddClientCredentials(r *http.Request) error {
 	if c.clientID == "" {
 		return ErrNoClientIDSet
 	}
@@ -371,7 +371,7 @@ func (c Client) AddClientCredentials(r *http.Request) error {
 
 // AddTokenCredentials adds the configured tokens to `r` as credentials,
 // authenticating the request.
-func (c Client) AddTokenCredentials(r *http.Request) error {
+func (c *Client) AddTokenCredentials(r *http.Request) error {
 	c.tokenMu.RLock()
 	defer c.tokenMu.RUnlock()
 	if c.accessToken == "" {
@@ -383,7 +383,7 @@ func (c Client) AddTokenCredentials(r *http.Request) error {
 
 // MakeClientsHMACRequest signs an *http.Request so it can be executed against
 // the Clients service.
-func (c Client) MakeClientsHMACRequest(r *http.Request) error {
+func (c *Client) MakeClientsHMACRequest(r *http.Request) error {
 	if len(c.hmacs.clients.Secret) == 0 {
 		return ErrNoClientsHMACSecretSet
 	}
@@ -401,7 +401,7 @@ func (c Client) MakeClientsHMACRequest(r *http.Request) error {
 
 // MakeScopesHMACRequest signs an *http.Request so it can be executed against
 // the Scopes service.
-func (c Client) MakeScopesHMACRequest(r *http.Request) error {
+func (c *Client) MakeScopesHMACRequest(r *http.Request) error {
 	if len(c.hmacs.scopes.Secret) == 0 {
 		return ErrNoScopesHMACSecretSet
 	}
@@ -417,7 +417,7 @@ func (c Client) MakeScopesHMACRequest(r *http.Request) error {
 	return c.makeHMACRequest(r, c.hmacs.scopes)
 }
 
-func (c Client) makeHMACRequest(r *http.Request, auth HMACAuth) error {
+func (c *Client) makeHMACRequest(r *http.Request, auth HMACAuth) error {
 	var buf *bytes.Buffer
 	if r.Body != nil {
 		body, err := ioutil.ReadAll(r.Body)
@@ -448,7 +448,7 @@ func (c Client) makeHMACRequest(r *http.Request, auth HMACAuth) error {
 // Client. It is meant to be used to persist the tokens to avoid authenticating
 // on every Client instantiation; there should be no other reason to interact
 // with the tokens this way.
-func (c Client) GetTokens() (access, refresh string) {
+func (c *Client) GetTokens() (access, refresh string) {
 	c.tokenMu.RLock()
 	defer c.tokenMu.RUnlock()
 	return c.accessToken, c.refreshToken
