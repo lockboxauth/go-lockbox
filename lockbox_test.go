@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/hashicorp/go-uuid"
 	"github.com/nsf/jsondiff"
 	"lockbox.dev/hmac"
 	"yall.in"
@@ -21,6 +22,15 @@ type errorTest struct {
 	status int
 	body   []byte
 	err    error
+}
+
+func uuidOrFail(t *testing.T) string {
+	t.Helper()
+	id, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatalf("Unexpected error generating ID: %s", err.Error())
+	}
+	return id
 }
 
 func staticResponseServer(code int, body []byte) *httptest.Server {
