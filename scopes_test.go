@@ -219,7 +219,7 @@ func TestScopesGet_success(t *testing.T) {
 
 	apiClient, err := client.Scopes.Get(ctx, "https://test.lockbox.dev/basic/scope")
 	if err != nil {
-		t.Fatalf("Unexpected error retrieving client: %s", err)
+		t.Fatalf("Unexpected error retrieving scope: %s", err)
 	}
 	if diff := cmp.Diff(Scope{
 		ID:               "https://test.lockbox.dev/basic/scope",
@@ -702,7 +702,7 @@ func TestScopesDelete_success(t *testing.T) {
 
 	err := client.Scopes.Delete(ctx, "https://test.lockbox.dev/basic/scope")
 	if err != nil {
-		t.Fatalf("Unexpected error retrieving client: %s", err)
+		t.Fatalf("Unexpected error deleting scope: %s", err)
 	}
 }
 
