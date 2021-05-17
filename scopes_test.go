@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/go-uuid"
 	"yall.in"
 	testinglog "yall.in/testing"
 )
@@ -21,14 +20,8 @@ func TestScopesCreate_success(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	userID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating user ID: %s", err)
-	}
-	clientID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating client ID: %s", err)
-	}
+	userID := uuidOrFail(t)
+	clientID := uuidOrFail(t)
 
 	hmacOpts := HMACAuth{
 		MaxSkew: time.Minute,
@@ -200,15 +193,8 @@ func TestScopesGet_success(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	userUUID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("error generating user UUID: %s", err)
-	}
-
-	clientUUID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("error generating client UUID: %s", err)
-	}
+	userUUID := uuidOrFail(t)
+	clientUUID := uuidOrFail(t)
 
 	hmacOpts := HMACAuth{
 		MaxSkew: time.Minute,
@@ -355,14 +341,8 @@ func TestScopesUpdate_full(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	userID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating user ID: %s", err)
-	}
-	clientID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating client ID: %s", err)
-	}
+	userID := uuidOrFail(t)
+	clientID := uuidOrFail(t)
 
 	hmacOpts := HMACAuth{
 		MaxSkew: time.Minute,
@@ -472,14 +452,8 @@ func TestScopesUpdate_defaultOnly(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	userID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating user ID: %s", err)
-	}
-	clientID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating client ID: %s", err)
-	}
+	userID := uuidOrFail(t)
+	clientID := uuidOrFail(t)
 
 	hmacOpts := HMACAuth{
 		MaxSkew: time.Minute,
@@ -702,15 +676,8 @@ func TestScopesDelete_success(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	userUUID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("error generating user UUID: %s", err)
-	}
-
-	clientUUID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("error generating client UUID: %s", err)
-	}
+	userUUID := uuidOrFail(t)
+	clientUUID := uuidOrFail(t)
 
 	hmacOpts := HMACAuth{
 		MaxSkew: time.Minute,
@@ -733,7 +700,7 @@ func TestScopesDelete_success(t *testing.T) {
 		Scopes: hmacOpts,
 	})
 
-	err = client.Scopes.Delete(ctx, "https://test.lockbox.dev/basic/scope")
+	err := client.Scopes.Delete(ctx, "https://test.lockbox.dev/basic/scope")
 	if err != nil {
 		t.Fatalf("Unexpected error retrieving client: %s", err)
 	}
@@ -785,13 +752,7 @@ func TestScopesDelete_errors(t *testing.T) {
 				Scopes: hmacOpts,
 			})
 
-			id, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Errorf("error generating UUID: %s", err)
-				return
-			}
-
-			err = client.Scopes.Delete(ctx, id)
+			err := client.Scopes.Delete(ctx, uuidOrFail(t))
 			if err != test.err {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
