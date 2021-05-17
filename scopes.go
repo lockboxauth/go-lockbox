@@ -377,9 +377,6 @@ func (s ScopesService) ListDefault(ctx context.Context) ([]Scope, error) {
 	if resp.Errors.Contains(serverError) {
 		return nil, ErrServerError
 	}
-	if resp.Errors.Contains(invalidFormatError) {
-		return nil, ErrInvalidFormatError
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:   requestErrAccessDenied,
 		Header: "Authorization",
