@@ -217,7 +217,7 @@ func TestScopesGet_success(t *testing.T) {
 		Scopes: hmacOpts,
 	})
 
-	apiClient, err := client.Scopes.Get(ctx, "https://test.lockbox.dev/basic/scope")
+	scope, err := client.Scopes.Get(ctx, "https://test.lockbox.dev/basic/scope")
 	if err != nil {
 		t.Fatalf("Unexpected error retrieving scope: %s", err)
 	}
@@ -228,8 +228,8 @@ func TestScopesGet_success(t *testing.T) {
 		ClientPolicy:     ScopesPolicyDefaultDeny,
 		ClientExceptions: []string{clientUUID},
 		IsDefault:        true,
-	}, apiClient); diff != "" {
-		t.Errorf("Client mismatch (-wanted, +got): %s", diff)
+	}, scope); diff != "" {
+		t.Errorf("Scope mismatch (-wanted, +got): %s", diff)
 	}
 }
 
