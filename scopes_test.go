@@ -408,11 +408,11 @@ func TestScopesUpdate_zeroValues(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/scopes/v1/"+url.PathEscape("https://test.lockbox.dev/basic/scope"))
 		checkMethod(t, r, http.MethodPatch)
-		checkJSONBody(t, r, fmt.Sprintf(`{"userPolicy": "DEFAULT_DENY", "userExceptions": [], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": [], "isDefault": false}`))
+		checkJSONBody(t, r, `{"userPolicy": "DEFAULT_DENY", "userExceptions": [], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": [], "isDefault": false}`)
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_DENY", "userExceptions": [], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": [], "isDefault": false}]}`)))
+		w.Write([]byte(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_DENY", "userExceptions": [], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": [], "isDefault": false}]}`))
 	}))
 	defer server.Close()
 
@@ -465,7 +465,7 @@ func TestScopesUpdate_defaultOnly(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/scopes/v1/"+url.PathEscape("https://test.lockbox.dev/basic/scope"))
 		checkMethod(t, r, http.MethodPatch)
-		checkJSONBody(t, r, fmt.Sprintf(`{"isDefault": false}`))
+		checkJSONBody(t, r, `{"isDefault": false}`)
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
@@ -511,7 +511,7 @@ func TestScopesUpdate_clientPolicyOnly(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/scopes/v1/"+url.PathEscape("https://test.lockbox.dev/basic/scope"))
 		checkMethod(t, r, http.MethodPatch)
-		checkJSONBody(t, r, fmt.Sprintf(`{"clientPolicy": "DEFAULT_DENY"}`))
+		checkJSONBody(t, r, `{"clientPolicy": "DEFAULT_DENY"}`)
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
