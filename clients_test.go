@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/go-uuid"
 	"yall.in"
 	testinglog "yall.in/testing"
 )
@@ -26,15 +25,8 @@ func TestClientsCreate_success(t *testing.T) {
 	createdByIP := "1.1.1.1"
 	secret := "thisisverysecret"
 
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating client ID: %s", err)
-	}
-
-	nameUUID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating client name: %s", err)
-	}
+	id := uuidOrFail(t)
+	nameUUID := uuidOrFail(t)
 
 	hmacOpts := HMACAuth{
 		MaxSkew: time.Minute,
@@ -83,10 +75,7 @@ func TestClientsCreate_noClients(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	nameUUID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating client name: %s", err)
-	}
+	nameUUID := uuidOrFail(t)
 
 	hmacOpts := HMACAuth{
 		MaxSkew: time.Minute,
@@ -102,7 +91,7 @@ func TestClientsCreate_noClients(t *testing.T) {
 		Clients: hmacOpts,
 	})
 
-	_, err = client.Clients.Create(ctx, APIClient{
+	_, err := client.Clients.Create(ctx, APIClient{
 		Name:         nameUUID,
 		Confidential: true,
 	})
@@ -150,10 +139,7 @@ func TestClientsCreate_errors(t *testing.T) {
 			log := yall.New(testinglog.New(t, yall.Debug))
 			ctx := yall.InContext(context.Background(), log)
 
-			nameUUID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("Error generating client name: %s", err)
-			}
+			nameUUID := uuidOrFail(t)
 
 			hmacOpts := HMACAuth{
 				MaxSkew: time.Minute,
@@ -169,7 +155,7 @@ func TestClientsCreate_errors(t *testing.T) {
 				Clients: hmacOpts,
 			})
 
-			_, err = client.Clients.Create(ctx, APIClient{
+			_, err := client.Clients.Create(ctx, APIClient{
 				Name:         nameUUID,
 				Confidential: true,
 			})
@@ -189,20 +175,9 @@ func TestClientsGet_success(t *testing.T) {
 	now := time.Now().Round(time.Second)
 	timestamp := now.Format(time.RFC3339)
 
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("error generating UUID: %s", err)
-	}
-
-	createdByID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("error generating createdBy UUID: %s", err)
-	}
-
-	nameUUID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("error generating name UUID: %s", err)
-	}
+	id := uuidOrFail(t)
+	createdByID := uuidOrFail(t)
+	nameUUID := uuidOrFail(t)
 
 	hmacOpts := HMACAuth{
 		MaxSkew: time.Minute,
@@ -284,16 +259,13 @@ func TestClientsGet_errors(t *testing.T) {
 			server := staticResponseServer(test.status, test.body)
 			defer server.Close()
 
-			id, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("error generating UUID: %s", err)
-			}
+			id := uuidOrFail(t)
 
 			client := testClient(ctx, t, server.URL, HMACCredentials{
 				Clients: hmacOpts,
 			})
 
-			_, err = client.Clients.Get(ctx, id)
+			_, err := client.Clients.Get(ctx, id)
 			if err != test.err {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
@@ -309,10 +281,7 @@ func TestClientsGet_noClients(t *testing.T) {
 	server := staticResponseServer(http.StatusOK, []byte(`{}`))
 	defer server.Close()
 
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("error generating UUID: %s", err)
-	}
+	id := uuidOrFail(t)
 
 	hmacOpts := HMACAuth{
 		MaxSkew: time.Minute,
@@ -324,7 +293,7 @@ func TestClientsGet_noClients(t *testing.T) {
 	client := testClient(ctx, t, server.URL, HMACCredentials{
 		Clients: hmacOpts,
 	})
-	_, err = client.Clients.Get(ctx, id)
+	_, err := client.Clients.Get(ctx, id)
 	const errMsg = "no client found in response; this is almost certainly a server error"
 	if err.Error() != errMsg {
 		t.Errorf("Expected error %v, got %v instead", errMsg, err)
@@ -360,20 +329,9 @@ func TestClientsDelete_success(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("error generating UUID: %s", err)
-	}
-
-	nameUUID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("error generating UUID: %s", err)
-	}
-
-	createdByID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("error generating UUID: %s", err)
-	}
+	id := uuidOrFail(t)
+	nameUUID := uuidOrFail(t)
+	createdByID := uuidOrFail(t)
 
 	now := time.Now().Round(time.Second)
 	timestamp := now.Format(time.RFC3339)
@@ -399,7 +357,7 @@ func TestClientsDelete_success(t *testing.T) {
 	client := testClient(ctx, t, server.URL, HMACCredentials{
 		Clients: hmacOpts,
 	})
-	err = client.Clients.Delete(ctx, id)
+	err := client.Clients.Delete(ctx, id)
 	if err != nil {
 		t.Fatalf("Unexpected error deleting client: %s", err)
 	}
@@ -451,13 +409,9 @@ func TestClientsDelete_errors(t *testing.T) {
 				Clients: hmacOpts,
 			})
 
-			id, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Errorf("error generating UUID: %s", err)
-				return
-			}
+			id := uuidOrFail(t)
 
-			err = client.Clients.Delete(ctx, id)
+			err := client.Clients.Delete(ctx, id)
 			if err != test.err {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
@@ -493,20 +447,9 @@ func TestClientsResetSecret_success(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("error generating UUID: %s", err)
-	}
-
-	nameUUID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("error generating UUID: %s", err)
-	}
-
-	createdByID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("error generating UUID: %s", err)
-	}
+	id := uuidOrFail(t)
+	nameUUID := uuidOrFail(t)
+	createdByID := uuidOrFail(t)
 
 	now := time.Now().Round(time.Second)
 	timestamp := now.Format(time.RFC3339)
@@ -594,13 +537,9 @@ func TestClientsResetSecret_errors(t *testing.T) {
 				Clients: hmacOpts,
 			})
 
-			id, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Errorf("error generating UUID: %s", err)
-				return
-			}
+			id := uuidOrFail(t)
 
-			_, err = client.Clients.ResetSecret(ctx, id)
+			_, err := client.Clients.ResetSecret(ctx, id)
 			if err != test.err {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
@@ -639,10 +578,7 @@ func TestClientsResetSecret_noClients(t *testing.T) {
 	server := staticResponseServer(http.StatusOK, []byte(`{}`))
 	defer server.Close()
 
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("error generating UUID: %s", err)
-	}
+	id := uuidOrFail(t)
 
 	hmacOpts := HMACAuth{
 		MaxSkew: time.Minute,
@@ -654,7 +590,7 @@ func TestClientsResetSecret_noClients(t *testing.T) {
 	client := testClient(ctx, t, server.URL, HMACCredentials{
 		Clients: hmacOpts,
 	})
-	_, err = client.Clients.ResetSecret(ctx, id)
+	_, err := client.Clients.ResetSecret(ctx, id)
 	const errMsg = "no client found in response; this is almost certainly a server error"
 	if err.Error() != errMsg {
 		t.Errorf("Expected error %v, got %v instead", errMsg, err)
@@ -670,20 +606,9 @@ func TestRedirectURIsCreate_success(t *testing.T) {
 	createdAtStamp := createdAt.Format(time.RFC3339)
 	createdBy := "testuser"
 
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating ID: %s", err)
-	}
-
-	id2, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating second ID: %s", err)
-	}
-
-	clientID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating client ID: %s", err)
-	}
+	id := uuidOrFail(t)
+	id2 := uuidOrFail(t)
+	clientID := uuidOrFail(t)
 
 	hmacOpts := HMACAuth{
 		MaxSkew: time.Minute,
@@ -803,14 +728,8 @@ func TestRedirectURIsCreate_errors(t *testing.T) {
 			log := yall.New(testinglog.New(t, yall.Debug))
 			ctx := yall.InContext(context.Background(), log)
 
-			clientUUID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("Error generating client ID: %s", err)
-			}
-			redirectUUID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("Error generating redirect URI UUID: %s", err)
-			}
+			clientUUID := uuidOrFail(t)
+			redirectUUID := uuidOrFail(t)
 
 			hmacOpts := HMACAuth{
 				MaxSkew: time.Minute,
@@ -826,7 +745,7 @@ func TestRedirectURIsCreate_errors(t *testing.T) {
 				Clients: hmacOpts,
 			})
 
-			_, err = client.Clients.CreateRedirectURIs(ctx, clientUUID, []RedirectURI{
+			_, err := client.Clients.CreateRedirectURIs(ctx, clientUUID, []RedirectURI{
 				{
 					URI:       "https://lockbox.dev/test/" + redirectUUID,
 					IsBaseURI: true,
@@ -857,12 +776,9 @@ func TestRedirectURIsCreate_missingURI(t *testing.T) {
 		},
 	})
 
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating ID: %s", err)
-	}
+	id := uuidOrFail(t)
 
-	_, err = client.Clients.CreateRedirectURIs(ctx, id, []RedirectURI{{}})
+	_, err := client.Clients.CreateRedirectURIs(ctx, id, []RedirectURI{{}})
 	if _, ok := err.(ErrRedirectURIURIMissing); !ok {
 		t.Errorf("Expected error %T, got %v instead", ErrRedirectURIURIMissing{}, err)
 	}
@@ -885,12 +801,9 @@ func TestRedirectURIsCreate_conflictingID(t *testing.T) {
 		},
 	})
 
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating ID: %s", err)
-	}
+	id := uuidOrFail(t)
 
-	_, err = client.Clients.CreateRedirectURIs(ctx, id, []RedirectURI{
+	_, err := client.Clients.CreateRedirectURIs(ctx, id, []RedirectURI{
 		{
 			URI:       "https://lockbox.dev/",
 			IsBaseURI: true,
@@ -910,20 +823,9 @@ func TestRedirectURIsList_success(t *testing.T) {
 	createdAtStamp := createdAt.Format(time.RFC3339)
 	createdBy := "testuser"
 
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating URI ID: %s", err)
-	}
-
-	id2, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating URI ID: %s", err)
-	}
-
-	clientID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating client ID: %s", err)
-	}
+	id := uuidOrFail(t)
+	id2 := uuidOrFail(t)
+	clientID := uuidOrFail(t)
 
 	hmacOpts := HMACAuth{
 		MaxSkew: time.Minute,
@@ -1029,10 +931,7 @@ func TestRedirectURIsList_errors(t *testing.T) {
 			log := yall.New(testinglog.New(t, yall.Debug))
 			ctx := yall.InContext(context.Background(), log)
 
-			clientUUID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("Error generating client ID: %s", err)
-			}
+			clientUUID := uuidOrFail(t)
 
 			hmacOpts := HMACAuth{
 				MaxSkew: time.Minute,
@@ -1048,7 +947,7 @@ func TestRedirectURIsList_errors(t *testing.T) {
 				Clients: hmacOpts,
 			})
 
-			_, err = client.Clients.ListRedirectURIs(ctx, clientUUID)
+			_, err := client.Clients.ListRedirectURIs(ctx, clientUUID)
 			if err != test.err {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
@@ -1065,15 +964,8 @@ func TestRedirectURIsDelete_success(t *testing.T) {
 	createdAtStamp := createdAt.Format(time.RFC3339)
 	createdBy := "testuser"
 
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating URI ID: %s", err)
-	}
-
-	clientID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating client ID: %s", err)
-	}
+	id := uuidOrFail(t)
+	clientID := uuidOrFail(t)
 
 	hmacOpts := HMACAuth{
 		MaxSkew: time.Minute,
@@ -1096,7 +988,7 @@ func TestRedirectURIsDelete_success(t *testing.T) {
 		Clients: hmacOpts,
 	})
 
-	err = client.Clients.DeleteRedirectURI(ctx, clientID, id)
+	err := client.Clients.DeleteRedirectURI(ctx, clientID, id)
 	if err != nil {
 		t.Fatalf("Error creating redirect URIs: %s", err)
 	}
@@ -1119,12 +1011,9 @@ func TestRedirectURIsDelete_missingID(t *testing.T) {
 		},
 	})
 
-	clientID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating client ID: %s", err)
-	}
+	clientID := uuidOrFail(t)
 
-	err = client.Clients.DeleteRedirectURI(ctx, clientID, "")
+	err := client.Clients.DeleteRedirectURI(ctx, clientID, "")
 	if err != ErrClientRequestMissingRedirectURIID {
 		t.Errorf("Expected error %v, got %v instead", ErrClientRequestMissingRedirectURIID, err)
 	}
@@ -1147,12 +1036,9 @@ func TestRedirectURIsDelete_missingURIID(t *testing.T) {
 		},
 	})
 
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("Error generating client ID: %s", err)
-	}
+	id := uuidOrFail(t)
 
-	err = client.Clients.DeleteRedirectURI(ctx, "", id)
+	err := client.Clients.DeleteRedirectURI(ctx, "", id)
 	if err != ErrClientRequestMissingID {
 		t.Errorf("Expected error %v, got %v instead", ErrClientRequestMissingID, err)
 	}
@@ -1195,15 +1081,8 @@ func TestRedirectURIsDelete_errors(t *testing.T) {
 			log := yall.New(testinglog.New(t, yall.Debug))
 			ctx := yall.InContext(context.Background(), log)
 
-			clientUUID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("Error generating client ID: %s", err)
-			}
-
-			id, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("Error generating redirect URI ID: %s", err)
-			}
+			clientUUID := uuidOrFail(t)
+			id := uuidOrFail(t)
 
 			hmacOpts := HMACAuth{
 				MaxSkew: time.Minute,
@@ -1219,7 +1098,7 @@ func TestRedirectURIsDelete_errors(t *testing.T) {
 				Clients: hmacOpts,
 			})
 
-			err = client.Clients.DeleteRedirectURI(ctx, clientUUID, id)
+			err := client.Clients.DeleteRedirectURI(ctx, clientUUID, id)
 			if err != test.err {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
