@@ -515,7 +515,7 @@ func TestScopesUpdate_clientPolicyOnly(t *testing.T) {
 		checkHMACAuthorization(t, r, hmacOpts)
 
 		w.WriteHeader(http.StatusOK)
-		mustWrite(t, w, []byte(fmt.Sprintf(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_DENY", "userExceptions": [], "clientPolicy": "DEFAULT_DENY", "clientExceptions": [], "isDefault": false}]}`)))
+		mustWrite(t, w, []byte(`{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_DENY", "userExceptions": [], "clientPolicy": "DEFAULT_DENY", "clientExceptions": [], "isDefault": false}]}`))
 	}))
 	defer server.Close()
 
