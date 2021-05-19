@@ -27,7 +27,7 @@ func TestAccountsCreate_register(t *testing.T) {
 		checkJSONBody(t, r, `{"id": "test@lockbox.dev", "isRegistration": true, "createdAt": "0001-01-01T00:00:00Z", "lastSeenAt": "0001-01-01T00:00:00Z", "lastUsedAt": "0001-01-01T00:00:00Z"}`)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"accounts": [{"id": "test@lockbox.dev", "isRegistration": true, "createdAt": "` + timestamp + `", "lastSeenAt": "` + timestamp + `", "lastUsedAt": "` + timestamp + `", "profileID": "b9d7ed67-330b-481d-ad50-2208fe30b947"}]}`))
+		mustWrite(t, w, []byte(`{"accounts": [{"id": "test@lockbox.dev", "isRegistration": true, "createdAt": "`+timestamp+`", "lastSeenAt": "`+timestamp+`", "lastUsedAt": "`+timestamp+`", "profileID": "b9d7ed67-330b-481d-ad50-2208fe30b947"}]}`))
 	}))
 	defer server.Close()
 
@@ -67,7 +67,7 @@ func TestAccountsCreate_addAccount(t *testing.T) {
 		checkJSONBody(t, r, `{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "0001-01-01T00:00:00Z", "lastSeenAt": "0001-01-01T00:00:00Z", "lastUsedAt": "0001-01-01T00:00:00Z"}`)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"accounts": [{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "` + timestamp + `", "lastSeenAt": "` + timestamp + `", "lastUsedAt": "` + timestamp + `"}]}`))
+		mustWrite(t, w, []byte(`{"accounts": [{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "`+timestamp+`", "lastSeenAt": "`+timestamp+`", "lastUsedAt": "`+timestamp+`"}]}`))
 	}))
 	defer server.Close()
 
@@ -100,7 +100,7 @@ func TestAccountsCreate_noAccounts(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusOK, []byte(`{}`))
+	server := staticResponseServer(t, http.StatusOK, []byte(`{}`))
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL)
@@ -161,7 +161,7 @@ func TestAccountsCreate_errors(t *testing.T) {
 			log := yall.New(testinglog.New(t, yall.Debug))
 			ctx := yall.InContext(context.Background(), log)
 
-			server := staticResponseServer(test.status, test.body)
+			server := staticResponseServer(t, test.status, test.body)
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, AuthTokens{
@@ -194,7 +194,7 @@ func TestAccountsGet_success(t *testing.T) {
 		checkAuthorization(t, r, "Bearer test-access")
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"accounts": [{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "` + timestamp + `", "lastSeenAt": "` + timestamp + `", "lastUsedAt": "` + timestamp + `"}]}`))
+		mustWrite(t, w, []byte(`{"accounts": [{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "`+timestamp+`", "lastSeenAt": "`+timestamp+`", "lastUsedAt": "`+timestamp+`"}]}`))
 	}))
 	defer server.Close()
 
@@ -256,7 +256,7 @@ func TestAccountsGet_errors(t *testing.T) {
 			log := yall.New(testinglog.New(t, yall.Debug))
 			ctx := yall.InContext(context.Background(), log)
 
-			server := staticResponseServer(test.status, test.body)
+			server := staticResponseServer(t, test.status, test.body)
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, AuthTokens{
@@ -277,7 +277,7 @@ func TestAccountsGet_noAccounts(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusOK, []byte(`{}`))
+	server := staticResponseServer(t, http.StatusOK, []byte(`{}`))
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, AuthTokens{
@@ -296,7 +296,7 @@ func TestAccountsGet_missingID(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
+	server := staticResponseServer(t, http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, AuthTokens{
@@ -322,13 +322,13 @@ func TestAccountsListByProfileID_success(t *testing.T) {
 		checkAuthorization(t, r, "Bearer test-access")
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"accounts": [`))
-		w.Write([]byte(`{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "` + now.Format(time.RFC3339) + `", "lastSeenAt": "` + now.Format(time.RFC3339) + `", "lastUsedAt": "` + now.Format(time.RFC3339) + `"},`))
-		w.Write([]byte(`{"id": "test2@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "` + now.Add(-1*time.Second).Format(time.RFC3339) + `", "lastSeenAt": "` + now.Add(-1*time.Second).Format(time.RFC3339) + `", "lastUsedAt": "` + now.Add(-1*time.Second).Format(time.RFC3339) + `"},`))
-		w.Write([]byte(`{"id": "test3@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "` + now.Add(-4*time.Second).Format(time.RFC3339) + `", "lastSeenAt": "` + now.Add(-3*time.Second).Format(time.RFC3339) + `", "lastUsedAt": "` + now.Add(-2*time.Second).Format(time.RFC3339) + `"},`))
-		w.Write([]byte(`{"id": "test4@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "` + now.Add(-7*time.Second).Format(time.RFC3339) + `", "lastSeenAt": "` + now.Add(-6*time.Second).Format(time.RFC3339) + `", "lastUsedAt": "` + now.Add(-5*time.Second).Format(time.RFC3339) + `"},`))
-		w.Write([]byte(`{"id": "test5@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "` + now.Add(-10*time.Second).Format(time.RFC3339) + `", "lastSeenAt": "` + now.Add(-9*time.Second).Format(time.RFC3339) + `", "lastUsedAt": "` + now.Add(-8*time.Second).Format(time.RFC3339) + `"}`))
-		w.Write([]byte(`]}`))
+		mustWrite(t, w, []byte(`{"accounts": [`))
+		mustWrite(t, w, []byte(`{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "`+now.Format(time.RFC3339)+`", "lastSeenAt": "`+now.Format(time.RFC3339)+`", "lastUsedAt": "`+now.Format(time.RFC3339)+`"},`))
+		mustWrite(t, w, []byte(`{"id": "test2@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "`+now.Add(-1*time.Second).Format(time.RFC3339)+`", "lastSeenAt": "`+now.Add(-1*time.Second).Format(time.RFC3339)+`", "lastUsedAt": "`+now.Add(-1*time.Second).Format(time.RFC3339)+`"},`))
+		mustWrite(t, w, []byte(`{"id": "test3@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "`+now.Add(-4*time.Second).Format(time.RFC3339)+`", "lastSeenAt": "`+now.Add(-3*time.Second).Format(time.RFC3339)+`", "lastUsedAt": "`+now.Add(-2*time.Second).Format(time.RFC3339)+`"},`))
+		mustWrite(t, w, []byte(`{"id": "test4@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "`+now.Add(-7*time.Second).Format(time.RFC3339)+`", "lastSeenAt": "`+now.Add(-6*time.Second).Format(time.RFC3339)+`", "lastUsedAt": "`+now.Add(-5*time.Second).Format(time.RFC3339)+`"},`))
+		mustWrite(t, w, []byte(`{"id": "test5@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "`+now.Add(-10*time.Second).Format(time.RFC3339)+`", "lastSeenAt": "`+now.Add(-9*time.Second).Format(time.RFC3339)+`", "lastUsedAt": "`+now.Add(-8*time.Second).Format(time.RFC3339)+`"}`))
+		mustWrite(t, w, []byte(`]}`))
 	}))
 	defer server.Close()
 
@@ -424,7 +424,7 @@ func TestAccountsListByProfileID_errors(t *testing.T) {
 			log := yall.New(testinglog.New(t, yall.Debug))
 			ctx := yall.InContext(context.Background(), log)
 
-			server := staticResponseServer(test.status, test.body)
+			server := staticResponseServer(t, test.status, test.body)
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, AuthTokens{
@@ -445,7 +445,7 @@ func TestAccountsListByProfileID_missingProfileID(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "profileID"}]}`))
+	server := staticResponseServer(t, http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "profileID"}]}`))
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, AuthTokens{
@@ -472,7 +472,7 @@ func TestAccountsDelete_success(t *testing.T) {
 		checkAuthorization(t, r, "Bearer test-access")
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"accounts": [{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "` + timestamp + `", "lastSeenAt": "` + timestamp + `", "lastUsedAt": "` + timestamp + `"}]}`))
+		mustWrite(t, w, []byte(`{"accounts": [{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "`+timestamp+`", "lastSeenAt": "`+timestamp+`", "lastUsedAt": "`+timestamp+`"}]}`))
 	}))
 	defer server.Close()
 
@@ -524,7 +524,7 @@ func TestAccountsDelete_errors(t *testing.T) {
 			log := yall.New(testinglog.New(t, yall.Debug))
 			ctx := yall.InContext(context.Background(), log)
 
-			server := staticResponseServer(test.status, test.body)
+			server := staticResponseServer(t, test.status, test.body)
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, AuthTokens{
@@ -545,7 +545,7 @@ func TestAccountsDelete_missingID(t *testing.T) {
 	log := yall.New(testinglog.New(t, yall.Debug))
 	ctx := yall.InContext(context.Background(), log)
 
-	server := staticResponseServer(http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
+	server := staticResponseServer(t, http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "id"}]}`))
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, AuthTokens{

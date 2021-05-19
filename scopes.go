@@ -15,6 +15,22 @@ import (
 
 const (
 	scopesServiceDefaultBasePath = "/scopes/v1/"
+
+	// ScopesPolicyDenyAll is a constant for a scopes policy that denies
+	// all use of the scope, with no exceptions.
+	ScopesPolicyDenyAll = "DENY_ALL"
+
+	// ScopesPolicyDefaultDeny is a constant for a scopes policy that
+	// denies all use of the scope by default, with exceptions.
+	ScopesPolicyDefaultDeny = "DEFAULT_DENY"
+
+	// ScopesPolicyAllowAll is a constant for a scopes policy that allows
+	// all use of the scope, with no exceptions.
+	ScopesPolicyAllowAll = "ALLOW_ALL"
+
+	// ScopesPolicyDefaultAllow is a constant for a scopes policy that
+	// allows all use of the scope by default, with exceptions.
+	ScopesPolicyDefaultAllow = "DEFAULT_ALLOW"
 )
 
 var (
@@ -180,7 +196,7 @@ func (s ScopesService) Update(ctx context.Context, id string, change ScopeChange
 		return Scope{}, fmt.Errorf("error serialising scope change: %w", err)
 	}
 	buf := bytes.NewBuffer(b)
-	req, err := s.client.NewRequest(ctx, http.MethodPatch, s.buildURL("/"+id), buf)
+	req, err := s.client.NewRequest(ctx, http.MethodPatch, s.buildURL("/"+url.PathEscape(id)), buf)
 	if err != nil {
 		return Scope{}, fmt.Errorf("error constructing request: %w", err)
 	}
@@ -249,7 +265,7 @@ func (s ScopesService) Get(ctx context.Context, id string) (Scope, error) {
 	if id == "" {
 		return Scope{}, ErrScopeRequestMissingID
 	}
-	req, err := s.client.NewRequest(ctx, http.MethodGet, s.buildURL("/"+id), nil)
+	req, err := s.client.NewRequest(ctx, http.MethodGet, s.buildURL("/"+url.PathEscape(id)), nil)
 	if err != nil {
 		return Scope{}, fmt.Errorf("error constructing request: %w", err)
 	}
@@ -271,9 +287,6 @@ func (s ScopesService) Get(ctx context.Context, id string) (Scope, error) {
 	if resp.Errors.Contains(serverError) {
 		return Scope{}, ErrServerError
 	}
-	if resp.Errors.Contains(invalidFormatError) {
-		return Scope{}, ErrInvalidFormatError
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:   requestErrAccessDenied,
 		Header: "Authorization",
@@ -282,12 +295,6 @@ func (s ScopesService) Get(ctx context.Context, id string) (Scope, error) {
 	}
 
 	// req specific checks
-	if resp.Errors.Contains(RequestError{
-		Slug:  requestErrMissing,
-		Param: "id",
-	}) {
-		return Scope{}, ErrScopeRequestMissingID
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:  requestErrNotFound,
 		Param: "id",
@@ -312,7 +319,7 @@ func (s ScopesService) Delete(ctx context.Context, id string) error {
 	if id == "" {
 		return ErrScopeRequestMissingID
 	}
-	req, err := s.client.NewRequest(ctx, http.MethodDelete, s.buildURL("/"+id), nil)
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, s.buildURL("/"+url.PathEscape(id)), nil)
 	if err != nil {
 		return fmt.Errorf("error constructing request: %w", err)
 	}
@@ -334,9 +341,6 @@ func (s ScopesService) Delete(ctx context.Context, id string) error {
 	if resp.Errors.Contains(serverError) {
 		return ErrServerError
 	}
-	if resp.Errors.Contains(invalidFormatError) {
-		return ErrInvalidFormatError
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:   requestErrAccessDenied,
 		Header: "Authorization",
@@ -345,12 +349,6 @@ func (s ScopesService) Delete(ctx context.Context, id string) error {
 	}
 
 	// req specific checks
-	if resp.Errors.Contains(RequestError{
-		Slug:  requestErrMissing,
-		Param: "id",
-	}) {
-		return ErrScopeRequestMissingID
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:  requestErrNotFound,
 		Param: "id",
@@ -389,9 +387,6 @@ func (s ScopesService) ListDefault(ctx context.Context) ([]Scope, error) {
 	// standard checks
 	if resp.Errors.Contains(serverError) {
 		return nil, ErrServerError
-	}
-	if resp.Errors.Contains(invalidFormatError) {
-		return nil, ErrInvalidFormatError
 	}
 	if resp.Errors.Contains(RequestError{
 		Slug:   requestErrAccessDenied,
@@ -434,10 +429,8 @@ func (s ScopesService) ListDefault(ctx context.Context) ([]Scope, error) {
 // The result will be a map with a key of the scope's ID and the value being
 // the Scope itself.
 func (s ScopesService) GetByIDs(ctx context.Context, ids []string) (map[string]Scope, error) {
-	var v url.Values
-	for _, id := range ids {
-		v["id"] = append(v["id"], id)
-	}
+	v := url.Values{}
+	v["id"] = append(v["id"], ids...)
 	req, err := s.client.NewRequest(ctx, http.MethodGet, s.buildURL("/?"+v.Encode()), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error constructing request: %w", err)
