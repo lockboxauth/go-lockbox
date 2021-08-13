@@ -845,20 +845,35 @@ func TestScopesListDefault_success(t *testing.T) {
 func TestScopesListDefault_errors(t *testing.T) {
 	t.Parallel()
 	tests := map[string]errorTest{
-		"unexpectedError": {
+		"unexpected-error": {
 			status: http.StatusBadRequest,
 			body:   []byte(`{"errors": [{"error": "foo", "field": "/bar"}]}`),
 			err:    ErrUnexpectedError,
 		},
-		"serverError": {
+		"server-error": {
 			status: http.StatusInternalServerError,
 			body:   []byte(`{"errors": [{"error": "act_of_god"}]}`),
 			err:    ErrServerError,
 		},
-		"invalidCredentials": {
+		"invalid-credentials": {
 			status: http.StatusUnauthorized,
 			body:   []byte(`{"errors":[{"error": "access_denied", "header": "Authorization"}]}`),
 			err:    ErrUnauthorized,
+		},
+		"missing-default-value": {
+			status: http.StatusBadRequest,
+			body:   []byte(`{"errors": [{"error": "missing", "param": "default"}]}`),
+			err:    ErrInvalidRequestError,
+		},
+		"invalid-default-value": {
+			status: http.StatusBadRequest,
+			body:   []byte(`{"errors": [{"error": "invalid_value", "param": "default"}]}`),
+			err:    ErrInvalidRequestError,
+		},
+		"default-and-ids-conflict": {
+			status: http.StatusBadRequest,
+			body:   []byte(`{"errors": [{"error": "conflict", "param": "default,id"}]}`),
+			err:    ErrInvalidRequestError,
 		},
 	}
 
@@ -888,5 +903,216 @@ func TestScopesListDefault_errors(t *testing.T) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
+	}
+}
+
+func TestScopesGetByIDs_success(t *testing.T) {
+	t.Parallel()
+	userUUID := uuidOrFail(t)
+	clientUUID := uuidOrFail(t)
+	user2UUID := uuidOrFail(t)
+	client2UUID := uuidOrFail(t)
+	user3UUID := uuidOrFail(t)
+	client3UUID := uuidOrFail(t)
+
+	type testCase struct {
+		ids            []string
+		response       string
+		expectedURL    string
+		expectedScopes map[string]Scope
+	}
+
+	hmacOpts := HMACAuth{
+		MaxSkew: time.Minute,
+		OrgKey:  "LOCKBOXTEST",
+		Key:     "testkey",
+		Secret:  []byte("mysecrethmackey"),
+	}
+
+	tests := map[string]testCase{
+		"single": {
+			ids:         []string{"https://test.lockbox.dev/basic/scope"},
+			response:    `{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_ALLOW", "userExceptions": ["` + userUUID + `"], "clientPolicy": "DEFAULT_DENY", "clientExceptions": ["` + clientUUID + `"], "isDefault": true}]}`,
+			expectedURL: "/scopes/v1/?id=https%3A%2F%2Ftest.lockbox.dev%2Fbasic%2Fscope",
+			expectedScopes: map[string]Scope{
+				"https://test.lockbox.dev/basic/scope": {
+					ID:               "https://test.lockbox.dev/basic/scope",
+					UserPolicy:       ScopesPolicyDefaultAllow,
+					UserExceptions:   []string{userUUID},
+					ClientPolicy:     ScopesPolicyDefaultDeny,
+					ClientExceptions: []string{clientUUID},
+					IsDefault:        true,
+				},
+			},
+		},
+		"two": {
+			ids:         []string{"https://test.lockbox.dev/basic/scope", "https://test.lockbox.dev/basic/scope2"},
+			response:    `{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_ALLOW", "userExceptions": ["` + userUUID + `"], "clientPolicy": "DEFAULT_DENY", "clientExceptions": ["` + clientUUID + `"], "isDefault": true},{"id": "https://test.lockbox.dev/basic/scope2", "userPolicy": "DEFAULT_DENY", "userExceptions": ["` + user2UUID + `"], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": ["` + client2UUID + `"], "isDefault": true}]}`,
+			expectedURL: "/scopes/v1/?id=https%3A%2F%2Ftest.lockbox.dev%2Fbasic%2Fscope&id=https%3A%2F%2Ftest.lockbox.dev%2Fbasic%2Fscope2",
+			expectedScopes: map[string]Scope{
+				"https://test.lockbox.dev/basic/scope": {
+					ID:               "https://test.lockbox.dev/basic/scope",
+					UserPolicy:       ScopesPolicyDefaultAllow,
+					UserExceptions:   []string{userUUID},
+					ClientPolicy:     ScopesPolicyDefaultDeny,
+					ClientExceptions: []string{clientUUID},
+					IsDefault:        true,
+				},
+				"https://test.lockbox.dev/basic/scope2": {
+					ID:               "https://test.lockbox.dev/basic/scope2",
+					UserPolicy:       ScopesPolicyDefaultDeny,
+					UserExceptions:   []string{user2UUID},
+					ClientPolicy:     ScopesPolicyDefaultAllow,
+					ClientExceptions: []string{client2UUID},
+					IsDefault:        true,
+				},
+			},
+		},
+		"three": {
+			ids:         []string{"https://test.lockbox.dev/basic/scope", "https://test.lockbox.dev/basic/scope2", "https://test.lockbox.dev/basic/scope3"},
+			response:    `{"scopes": [{"id": "https://test.lockbox.dev/basic/scope", "userPolicy": "DEFAULT_ALLOW", "userExceptions": ["` + userUUID + `"], "clientPolicy": "DEFAULT_DENY", "clientExceptions": ["` + clientUUID + `"], "isDefault": true},{"id": "https://test.lockbox.dev/basic/scope2", "userPolicy": "DEFAULT_DENY", "userExceptions": ["` + user2UUID + `"], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": ["` + client2UUID + `"], "isDefault": true},{"id": "https://test.lockbox.dev/basic/scope3", "userPolicy": "DEFAULT_ALLOW", "userExceptions": ["` + userUUID + `","` + user2UUID + `","` + user3UUID + `"], "clientPolicy": "DEFAULT_ALLOW", "clientExceptions": ["` + clientUUID + `","` + client2UUID + `","` + client3UUID + `"], "isDefault": false}]}`,
+			expectedURL: "/scopes/v1/?id=https%3A%2F%2Ftest.lockbox.dev%2Fbasic%2Fscope&id=https%3A%2F%2Ftest.lockbox.dev%2Fbasic%2Fscope2&id=https%3A%2F%2Ftest.lockbox.dev%2Fbasic%2Fscope3",
+			expectedScopes: map[string]Scope{
+				"https://test.lockbox.dev/basic/scope": {
+					ID:               "https://test.lockbox.dev/basic/scope",
+					UserPolicy:       ScopesPolicyDefaultAllow,
+					UserExceptions:   []string{userUUID},
+					ClientPolicy:     ScopesPolicyDefaultDeny,
+					ClientExceptions: []string{clientUUID},
+					IsDefault:        true,
+				},
+				"https://test.lockbox.dev/basic/scope2": {
+					ID:               "https://test.lockbox.dev/basic/scope2",
+					UserPolicy:       ScopesPolicyDefaultDeny,
+					UserExceptions:   []string{user2UUID},
+					ClientPolicy:     ScopesPolicyDefaultAllow,
+					ClientExceptions: []string{client2UUID},
+					IsDefault:        true,
+				},
+				"https://test.lockbox.dev/basic/scope3": {
+					ID:               "https://test.lockbox.dev/basic/scope3",
+					UserPolicy:       ScopesPolicyDefaultAllow,
+					UserExceptions:   []string{userUUID, user2UUID, user3UUID},
+					ClientPolicy:     ScopesPolicyDefaultAllow,
+					ClientExceptions: []string{clientUUID, client2UUID, client3UUID},
+					IsDefault:        false,
+				},
+			},
+		},
+	}
+
+	for name, test := range tests {
+		name, test := name, test
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			log := yall.New(testinglog.New(t, yall.Debug))
+			ctx := yall.InContext(context.Background(), log)
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				checkURL(t, r, test.expectedURL)
+				checkMethod(t, r, http.MethodGet)
+				checkHMACAuthorization(t, r, hmacOpts)
+
+				w.WriteHeader(http.StatusOK)
+				mustWrite(t, w, []byte(test.response))
+			}))
+			defer server.Close()
+
+			client := testClient(ctx, t, server.URL, HMACCredentials{
+				Scopes: hmacOpts,
+			})
+
+			scopes, err := client.Scopes.GetByIDs(ctx, test.ids)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+			if diff := cmp.Diff(test.expectedScopes, scopes); diff != "" {
+				t.Errorf("Scopes mismatch (-wanted, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestScopesGetByIDs_errors(t *testing.T) {
+	t.Parallel()
+	tests := map[string]errorTest{
+		"default-and-ids-conflict": {
+			status: http.StatusBadRequest,
+			body:   []byte(`{"errors": [{"error": "conflict", "param": "default,id"}]}`),
+			err:    ErrInvalidRequestError,
+		},
+		"no-ids": {
+			status: http.StatusBadRequest,
+			body:   []byte(`{"errors": [{"error": "missing", "param": "default"}]}`),
+			err:    ErrScopeRequestMissingID,
+		},
+		"unexpected-error": {
+			status: http.StatusBadRequest,
+			body:   []byte(`{"errors": [{"error": "foo", "field": "/bar"}]}`),
+			err:    ErrUnexpectedError,
+		},
+		"server-error": {
+			status: http.StatusInternalServerError,
+			body:   []byte(`{"errors": [{"error": "act_of_god"}]}`),
+			err:    ErrServerError,
+		},
+		"invalid-credentials": {
+			status: http.StatusUnauthorized,
+			body:   []byte(`{"errors":[{"error": "access_denied", "header": "Authorization"}]}`),
+			err:    ErrUnauthorized,
+		},
+	}
+
+	for name, test := range tests {
+		name, test := name, test
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			log := yall.New(testinglog.New(t, yall.Debug))
+			ctx := yall.InContext(context.Background(), log)
+
+			hmacOpts := HMACAuth{
+				MaxSkew: time.Minute,
+				OrgKey:  "LOCKBOXTEST",
+				Key:     "testkey",
+				Secret:  []byte("mysecrethmackey"),
+			}
+
+			server := staticResponseServer(t, test.status, test.body)
+			defer server.Close()
+
+			client := testClient(ctx, t, server.URL, HMACCredentials{
+				Scopes: hmacOpts,
+			})
+
+			_, err := client.Scopes.GetByIDs(ctx, []string{"https://test.lockbox.dev/scopes/basic"})
+			if err != test.err {
+				t.Errorf("Expected error %v, got %v instead", test.err, err)
+			}
+		})
+	}
+}
+
+func TestScopesGetByIDs_missingIDs(t *testing.T) {
+	t.Parallel()
+	log := yall.New(testinglog.New(t, yall.Debug))
+	ctx := yall.InContext(context.Background(), log)
+
+	server := staticResponseServer(t, http.StatusBadRequest, []byte(`{"errors":[{"error": "missing", "param": "default"}]}`))
+	defer server.Close()
+
+	hmacOpts := HMACAuth{
+		MaxSkew: time.Minute,
+		OrgKey:  "LOCKBOXTEST",
+		Key:     "testkey",
+		Secret:  []byte("mysecrethmackey"),
+	}
+
+	client := testClient(ctx, t, server.URL, HMACCredentials{
+		Scopes: hmacOpts,
+	})
+
+	_, err := client.Scopes.GetByIDs(ctx, nil)
+	if err != ErrScopeRequestMissingID {
+		t.Errorf("Expected error %v, got %v instead", ErrScopeRequestMissingID, err)
 	}
 }
