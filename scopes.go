@@ -400,21 +400,21 @@ func (s ScopesService) ListDefault(ctx context.Context) ([]Scope, error) {
 		Slug:  requestErrConflict,
 		Param: "default,id",
 	}) {
-		return nil, fmt.Errorf("tried to list default scopes and specific scopes; this is a go-lockbox error, please report it")
+		return nil, ErrInvalidRequestError
 	}
 
 	if resp.Errors.Contains(RequestError{
 		Slug:  requestErrMissing,
 		Param: "default",
 	}) {
-		return nil, fmt.Errorf("incorrectly formatted request; this is a go-lockbox error, please report it")
+		return nil, ErrInvalidRequestError
 	}
 
 	if resp.Errors.Contains(RequestError{
 		Slug:  requestErrInvalidValue,
 		Param: "default",
 	}) {
-		return nil, fmt.Errorf("invalid value for default param; this is a go-lockbox error, please report it")
+		return nil, ErrInvalidRequestError
 	}
 
 	if len(resp.Errors) > 0 {
@@ -429,6 +429,9 @@ func (s ScopesService) ListDefault(ctx context.Context) ([]Scope, error) {
 // The result will be a map with a key of the scope's ID and the value being
 // the Scope itself.
 func (s ScopesService) GetByIDs(ctx context.Context, ids []string) (map[string]Scope, error) {
+	if len(ids) < 1 {
+		return nil, ErrScopeRequestMissingID
+	}
 	v := url.Values{}
 	v["id"] = append(v["id"], ids...)
 	req, err := s.client.NewRequest(ctx, http.MethodGet, s.buildURL("/?"+v.Encode()), nil)
@@ -453,9 +456,6 @@ func (s ScopesService) GetByIDs(ctx context.Context, ids []string) (map[string]S
 	if resp.Errors.Contains(serverError) {
 		return nil, ErrServerError
 	}
-	if resp.Errors.Contains(invalidFormatError) {
-		return nil, ErrInvalidFormatError
-	}
 	if resp.Errors.Contains(RequestError{
 		Slug:   requestErrAccessDenied,
 		Header: "Authorization",
@@ -468,21 +468,14 @@ func (s ScopesService) GetByIDs(ctx context.Context, ids []string) (map[string]S
 		Slug:  requestErrConflict,
 		Param: "default,id",
 	}) {
-		return nil, fmt.Errorf("tried to list default scopes and specific scopes; this is a go-lockbox error, please report it")
+		return nil, ErrInvalidRequestError
 	}
 
 	if resp.Errors.Contains(RequestError{
 		Slug:  requestErrMissing,
 		Param: "default",
 	}) {
-		return nil, fmt.Errorf("incorrectly formatted request; this is a go-lockbox error, please report it")
-	}
-
-	if resp.Errors.Contains(RequestError{
-		Slug:  requestErrInvalidValue,
-		Param: "default",
-	}) {
-		return nil, fmt.Errorf("invalid value for default param; this is a go-lockbox error, please report it")
+		return nil, ErrScopeRequestMissingID
 	}
 
 	if len(resp.Errors) > 0 {
