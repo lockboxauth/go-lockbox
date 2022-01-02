@@ -63,7 +63,7 @@ func TestAccountsCreate_addAccount(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/accounts/v1")
 		checkMethod(t, r, http.MethodPost)
-		checkAuthorization(t, r, "Bearer test-access")
+		checkBearerToken(t, r, "test-access")
 		checkJSONBody(t, r, `{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "0001-01-01T00:00:00Z", "lastSeenAt": "0001-01-01T00:00:00Z", "lastUsedAt": "0001-01-01T00:00:00Z"}`)
 
 		w.WriteHeader(http.StatusOK)
@@ -191,7 +191,7 @@ func TestAccountsGet_success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/accounts/v1/"+url.PathEscape("test@lockbox.dev"))
 		checkMethod(t, r, http.MethodGet)
-		checkAuthorization(t, r, "Bearer test-access")
+		checkBearerToken(t, r, "test-access")
 
 		w.WriteHeader(http.StatusOK)
 		mustWrite(t, w, []byte(`{"accounts": [{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "`+timestamp+`", "lastSeenAt": "`+timestamp+`", "lastUsedAt": "`+timestamp+`"}]}`))
@@ -319,7 +319,7 @@ func TestAccountsListByProfileID_success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/accounts/v1/?profileID=testing123")
 		checkMethod(t, r, http.MethodGet)
-		checkAuthorization(t, r, "Bearer test-access")
+		checkBearerToken(t, r, "test-access")
 
 		w.WriteHeader(http.StatusOK)
 		mustWrite(t, w, []byte(`{"accounts": [`))
@@ -469,7 +469,7 @@ func TestAccountsDelete_success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/accounts/v1/"+url.PathEscape("test@lockbox.dev"))
 		checkMethod(t, r, http.MethodDelete)
-		checkAuthorization(t, r, "Bearer test-access")
+		checkBearerToken(t, r, "test-access")
 
 		w.WriteHeader(http.StatusOK)
 		mustWrite(t, w, []byte(`{"accounts": [{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "`+timestamp+`", "lastSeenAt": "`+timestamp+`", "lastUsedAt": "`+timestamp+`"}]}`))

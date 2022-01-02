@@ -9,8 +9,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/go-uuid"
 	"github.com/nsf/jsondiff"
 	"lockbox.dev/hmac"
@@ -90,11 +92,53 @@ func checkJSONBody(t *testing.T, r *http.Request, expected string) {
 	}
 }
 
+func checkURLFormEncodedBody(t *testing.T, r *http.Request, expected url.Values) {
+	t.Helper()
+	req, err := cloneRequest(r)
+	if err != nil {
+		t.Fatalf("Error cloning request: %s", err)
+	}
+	body, err := ioutil.ReadAll(req.Body)
+	defer req.Body.Close()
+	if err != nil {
+		t.Fatalf("Error reading body: %s", err)
+	}
+	got, err := url.ParseQuery(string(body))
+	if err != nil {
+		t.Fatalf("Error parsing body as URL-encoded query string: %s", err)
+	}
+	if diff := cmp.Diff(expected, got); diff != "" {
+		t.Errorf("Body didn't match expectation (-wanted, +got): %s", diff)
+	}
+}
+
 func checkAuthorization(t *testing.T, r *http.Request, expected string) {
 	t.Helper()
 	got := r.Header.Get("Authorization")
-	if got != "Bearer test-access" {
+	if got != expected {
 		t.Errorf("Expected Authorization header to be %q, got %q", expected, got)
+	}
+}
+
+func checkBearerToken(t *testing.T, r *http.Request, expected string) {
+	t.Helper()
+	checkAuthorization(t, r, "Bearer "+expected)
+}
+
+func checkBasicAuth(t *testing.T, r *http.Request, username, password string) {
+	t.Helper()
+	un, pw, ok := r.BasicAuth()
+	if !ok && (username != "" || password != "") {
+		t.Errorf("username expected to be %q, password expected to be %q, but no basic auth set", username, password)
+	}
+	if ok && username == "" && password == "" {
+		t.Errorf("no basic auth expected to be set, but got username of %q and password of %q", un, pw)
+	}
+	if un != username {
+		t.Errorf("expected username to be %q, got %q", username, un)
+	}
+	if pw != password {
+		t.Errorf("expected password to be %q, got %q", password, pw)
 	}
 }
 
