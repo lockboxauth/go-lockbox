@@ -83,6 +83,43 @@ type ScopeChange struct {
 	IsDefault        *bool     `json:"isDefault,omitempty"`
 }
 
+// SetUserPolicy returns a copy of `s` with the user policy set to `in`.
+func (s ScopeChange) SetUserPolicy(in string) ScopeChange {
+	ret := s
+	ret.UserPolicy = &in
+	return ret
+}
+
+// SetUserExceptions returns a copy of `s` with the user exceptions set to
+// `in`.
+func (s ScopeChange) SetUserExceptions(in []string) ScopeChange {
+	ret := s
+	ret.UserExceptions = &in
+	return ret
+}
+
+// SetClientPolicy returns a copy of `s` with the client policy set to `in`.
+func (s ScopeChange) SetClientPolicy(in string) ScopeChange {
+	ret := s
+	ret.ClientPolicy = &in
+	return ret
+}
+
+// SetClientExceptions returns a copy of `s` with the client exceptions set to
+// `in`.
+func (s ScopeChange) SetClientExceptions(in []string) ScopeChange {
+	ret := s
+	ret.ClientExceptions = &in
+	return ret
+}
+
+// SetIsDefault returns a copy of `s` with the IsDefault property set to `in`.
+func (s ScopeChange) SetIsDefault(in bool) ScopeChange {
+	ret := s
+	ret.IsDefault = &in
+	return ret
+}
+
 // ScopesService is the scopes service. Set the BasePath to modify where
 // requests will be sent relative to the Client's base URL. ScopesService
 // should only be instantiated by calling NewClient.

@@ -366,18 +366,12 @@ func TestScopesUpdate_full(t *testing.T) {
 		Scopes: hmacOpts,
 	})
 
-	policyDefaultAllow := ScopesPolicyDefaultAllow
-	policyDefaultDeny := ScopesPolicyDefaultDeny
-	userExceptions := []string{userID}
-	clientExceptions := []string{clientID}
-	def := true
-	result, err := client.Scopes.Update(ctx, "https://test.lockbox.dev/basic/scope", ScopeChange{
-		UserPolicy:       &policyDefaultDeny,
-		UserExceptions:   &userExceptions,
-		ClientPolicy:     &policyDefaultAllow,
-		ClientExceptions: &clientExceptions,
-		IsDefault:        &def,
-	})
+	result, err := client.Scopes.Update(ctx, "https://test.lockbox.dev/basic/scope", ScopeChange{}.
+		SetUserPolicy(ScopesPolicyDefaultDeny).
+		SetUserExceptions([]string{userID}).
+		SetClientPolicy(ScopesPolicyDefaultAllow).
+		SetClientExceptions([]string{clientID}).
+		SetIsDefault(true))
 	if err != nil {
 		t.Fatalf("Error creating scope: %s", err)
 	}
@@ -420,18 +414,12 @@ func TestScopesUpdate_zeroValues(t *testing.T) {
 		Scopes: hmacOpts,
 	})
 
-	policyDefaultAllow := ScopesPolicyDefaultAllow
-	policyDefaultDeny := ScopesPolicyDefaultDeny
-	userExceptions := []string{}
-	clientExceptions := []string{}
-	def := false
-	result, err := client.Scopes.Update(ctx, "https://test.lockbox.dev/basic/scope", ScopeChange{
-		UserPolicy:       &policyDefaultDeny,
-		UserExceptions:   &userExceptions,
-		ClientPolicy:     &policyDefaultAllow,
-		ClientExceptions: &clientExceptions,
-		IsDefault:        &def,
-	})
+	result, err := client.Scopes.Update(ctx, "https://test.lockbox.dev/basic/scope", ScopeChange{}.
+		SetUserPolicy(ScopesPolicyDefaultDeny).
+		SetUserExceptions([]string{}).
+		SetClientPolicy(ScopesPolicyDefaultAllow).
+		SetClientExceptions([]string{}).
+		SetIsDefault(false))
 	if err != nil {
 		t.Fatalf("Error creating scope: %s", err)
 	}
@@ -477,10 +465,8 @@ func TestScopesUpdate_defaultOnly(t *testing.T) {
 		Scopes: hmacOpts,
 	})
 
-	def := false
-	result, err := client.Scopes.Update(ctx, "https://test.lockbox.dev/basic/scope", ScopeChange{
-		IsDefault: &def,
-	})
+	result, err := client.Scopes.Update(ctx, "https://test.lockbox.dev/basic/scope", ScopeChange{}.
+		SetIsDefault(false))
 	if err != nil {
 		t.Fatalf("Error creating scope: %s", err)
 	}
@@ -523,10 +509,8 @@ func TestScopesUpdate_clientPolicyOnly(t *testing.T) {
 		Scopes: hmacOpts,
 	})
 
-	policyDefaultDeny := ScopesPolicyDefaultDeny
-	result, err := client.Scopes.Update(ctx, "https://test.lockbox.dev/basic/scope", ScopeChange{
-		ClientPolicy: &policyDefaultDeny,
-	})
+	result, err := client.Scopes.Update(ctx, "https://test.lockbox.dev/basic/scope", ScopeChange{}.
+		SetClientPolicy(ScopesPolicyDefaultDeny))
 	if err != nil {
 		t.Fatalf("Error creating scope: %s", err)
 	}
@@ -561,10 +545,8 @@ func TestScopesUpdate_noScopes(t *testing.T) {
 		Scopes: hmacOpts,
 	})
 
-	def := true
-	_, err := client.Scopes.Update(ctx, "https://test.lockbox.dev/basic/scope", ScopeChange{
-		IsDefault: &def,
-	})
+	_, err := client.Scopes.Update(ctx, "https://test.lockbox.dev/basic/scope", ScopeChange{}.
+		SetIsDefault(true))
 	const errMsg = "no scopes in the response; this is almost certainly a server error"
 	if err.Error() != errMsg {
 		t.Errorf("Expected error %v, got %v instead", errMsg, err)
@@ -631,10 +613,8 @@ func TestScopesUpdate_errors(t *testing.T) {
 				Scopes: hmacOpts,
 			})
 
-			def := true
-			_, err := client.Scopes.Update(ctx, "https://test.lockbox.dev/basic/scope", ScopeChange{
-				IsDefault: &def,
-			})
+			_, err := client.Scopes.Update(ctx, "https://test.lockbox.dev/basic/scope", ScopeChange{}.
+				SetIsDefault(true))
 
 			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
@@ -662,10 +642,7 @@ func TestScopesUpdate_missingID(t *testing.T) {
 		Scopes: hmacOpts,
 	})
 
-	def := true
-	_, err := client.Scopes.Update(ctx, "", ScopeChange{
-		IsDefault: &def,
-	})
+	_, err := client.Scopes.Update(ctx, "", ScopeChange{}.SetIsDefault(true))
 	if err != ErrScopeRequestMissingID {
 		t.Errorf("Expected error %v, got %v instead", ErrScopeRequestMissingID, err)
 	}
