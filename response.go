@@ -86,7 +86,7 @@ func oauthResponse(resp *http.Response) (OAuth2Response, error) {
 	var res OAuth2Response
 	err = json.Unmarshal(b, &res)
 	if err != nil {
-		return res, fmt.Errorf("error parsing response body: %w", err)
+		return res, fmt.Errorf("error parsing response body %q: %w", string(b), err)
 	}
 	return res, nil
 }

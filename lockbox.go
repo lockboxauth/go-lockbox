@@ -355,7 +355,7 @@ func (c *Client) AddClientCredentials(r *http.Request) error {
 	if c.clientSecret == "" && c.clientRedirectURI == "" {
 		return ErrNoClientSecretSet
 	}
-	if c.clientSecret != "" && c.clientRedirectURI == "" {
+	if c.clientSecret != "" && c.clientRedirectURI != "" {
 		return ErrBothClientSecretAndRedirectURISet
 	}
 	if c.clientSecret != "" {

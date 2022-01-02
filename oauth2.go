@@ -35,6 +35,10 @@ var (
 	// ErrInvalidClientCredentialsError is returned when the client
 	// credentials that were presented were invalid, for any reason.
 	ErrInvalidClientCredentialsError = errors.New("invalid client credentials")
+
+	// ErrUnsupportedResponseTypeError is returned when the server doesn't
+	// recognize the response type that go-lockbox is requesting.
+	ErrUnsupportedResponseTypeError = errors.New("unsupported response type; this is either a server or go-lockbox error")
 )
 
 // OAuth2Service is the oauth2 service. Set the BasePath to modify where
@@ -66,7 +70,7 @@ func (o OAuth2Service) ExchangeRefreshToken(ctx context.Context, token string, s
 	if token == "" {
 		return OAuth2Response{}, ErrOAuth2RequestMissingToken
 	}
-	var v url.Values
+	v := url.Values{}
 	v.Set("grant_type", "refresh_token")
 	v.Set("refresh_token", token)
 	if len(scopes) > 0 {
@@ -109,7 +113,7 @@ func (o OAuth2Service) ExchangeRefreshToken(ctx context.Context, token string, s
 	}
 	if res.StatusCode == http.StatusBadRequest &&
 		resp.Error == "unsupported_response_type" {
-		return resp, fmt.Errorf("unsupported response type; this is either a server or go-lockbox error")
+		return resp, ErrUnsupportedResponseTypeError
 	}
 	if resp.Error != "" {
 		return resp, ErrUnexpectedError
