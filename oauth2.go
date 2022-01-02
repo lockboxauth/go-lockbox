@@ -255,7 +255,7 @@ func (o OAuth2Service) ExchangeEmailCode(ctx context.Context, code string) (OAut
 	if code == "" {
 		return OAuth2Response{}, ErrOAuth2RequestMissingCode
 	}
-	var v url.Values
+	v := url.Values{}
 	v.Set("grant_type", "email")
 	v.Set("code", code)
 	buf := bytes.NewBuffer([]byte(v.Encode()))
@@ -297,7 +297,7 @@ func (o OAuth2Service) ExchangeEmailCode(ctx context.Context, code string) (OAut
 	}
 	if res.StatusCode == http.StatusBadRequest &&
 		resp.Error == "unsupported_response_type" {
-		return resp, fmt.Errorf("unsupported response type; this is either a server or go-lockbox error")
+		return resp, ErrUnsupportedResponseTypeError
 	}
 	if resp.Error != "" {
 		return resp, ErrUnexpectedError
