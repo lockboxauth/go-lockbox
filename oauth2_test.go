@@ -18,7 +18,7 @@ func TestOAuth2ExchangeRefreshToken_oneScope(t *testing.T) {
 	ctx := yall.InContext(context.Background(), log)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		checkURL(t, r, "/oauth2/v1/authorize")
+		checkURL(t, r, "/oauth2/v1/token")
 		checkMethod(t, r, http.MethodPost)
 		checkBasicAuth(t, r, "testClient", "veryverysecret")
 		checkURLFormEncodedBody(t, r, url.Values{
@@ -58,7 +58,7 @@ func TestOAuth2ExchangeRefreshToken_noScope(t *testing.T) {
 	ctx := yall.InContext(context.Background(), log)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		checkURL(t, r, "/oauth2/v1/authorize")
+		checkURL(t, r, "/oauth2/v1/token")
 		checkMethod(t, r, http.MethodPost)
 		checkBasicAuth(t, r, "testClient", "veryverysecret")
 		checkURLFormEncodedBody(t, r, url.Values{
@@ -95,7 +95,7 @@ func TestOAuth2ExchangeRefreshToken_threeScopes(t *testing.T) {
 	ctx := yall.InContext(context.Background(), log)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		checkURL(t, r, "/oauth2/v1/authorize")
+		checkURL(t, r, "/oauth2/v1/token")
 		checkMethod(t, r, http.MethodPost)
 		checkBasicAuth(t, r, "testClient", "veryverysecret")
 		checkURLFormEncodedBody(t, r, url.Values{
@@ -213,7 +213,7 @@ func TestOAuth2ExchangeGoogleIDToken_oneScope(t *testing.T) {
 	ctx := yall.InContext(context.Background(), log)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		checkURL(t, r, "/oauth2/v1/authorize")
+		checkURL(t, r, "/oauth2/v1/token")
 		checkMethod(t, r, http.MethodPost)
 		checkBasicAuth(t, r, "testClient", "veryverysecret")
 		checkURLFormEncodedBody(t, r, url.Values{
@@ -253,7 +253,7 @@ func TestOAuth2ExchangeGoogleIDToken_noScope(t *testing.T) {
 	ctx := yall.InContext(context.Background(), log)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		checkURL(t, r, "/oauth2/v1/authorize")
+		checkURL(t, r, "/oauth2/v1/token")
 		checkMethod(t, r, http.MethodPost)
 		checkBasicAuth(t, r, "testClient", "veryverysecret")
 		checkURLFormEncodedBody(t, r, url.Values{
@@ -290,7 +290,7 @@ func TestOAuth2ExchangeGoogleIDToken_threeScopes(t *testing.T) {
 	ctx := yall.InContext(context.Background(), log)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		checkURL(t, r, "/oauth2/v1/authorize")
+		checkURL(t, r, "/oauth2/v1/token")
 		checkMethod(t, r, http.MethodPost)
 		checkBasicAuth(t, r, "testClient", "veryverysecret")
 		checkURLFormEncodedBody(t, r, url.Values{
@@ -402,8 +402,178 @@ func TestOAuth2ExchangeGoogleIDToken_missingToken(t *testing.T) {
 	}
 }
 
-// TODO: test unhappy path for exchanging Google ID token for access token
-// TODO: test happy path for kicking off email flow
-// TODO: test unhappy paths for kicking off email flow
+func TestOAuth2SendEmail_oneScope(t *testing.T) {
+	t.Parallel()
+	log := yall.New(testinglog.New(t, yall.Debug))
+	ctx := yall.InContext(context.Background(), log)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		checkURL(t, r, "/oauth2/v1/authorize")
+		checkMethod(t, r, http.MethodPost)
+		checkBasicAuth(t, r, "testClient", "veryverysecret")
+		checkURLFormEncodedBody(t, r, url.Values{
+			"response_type": []string{"email"},
+			"email":         []string{"test@lockbox.dev"},
+			"scope":         []string{"https://scopes.lockbox.dev/test"},
+		})
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	client := testClient(ctx, t, server.URL, ClientCredentials{
+		ID:     "testClient",
+		Secret: "veryverysecret",
+	})
+
+	err := client.OAuth2.SendEmail(ctx, "test@lockbox.dev", []string{
+		"https://scopes.lockbox.dev/test",
+	})
+	if err != nil {
+		t.Fatalf("Error kicking off email flow: %s", err)
+	}
+}
+
+func TestOAuth2SendEmail_noScope(t *testing.T) {
+	t.Parallel()
+	log := yall.New(testinglog.New(t, yall.Debug))
+	ctx := yall.InContext(context.Background(), log)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		checkURL(t, r, "/oauth2/v1/authorize")
+		checkMethod(t, r, http.MethodPost)
+		checkBasicAuth(t, r, "testClient", "veryverysecret")
+		checkURLFormEncodedBody(t, r, url.Values{
+			"response_type": []string{"email"},
+			"email":         []string{"test@lockbox.dev"},
+		})
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	client := testClient(ctx, t, server.URL, ClientCredentials{
+		ID:     "testClient",
+		Secret: "veryverysecret",
+	})
+
+	err := client.OAuth2.SendEmail(ctx, "test@lockbox.dev", nil)
+	if err != nil {
+		t.Fatalf("Error kicking off email flow: %s", err)
+	}
+}
+
+func TestOAuth2SendEmail_threeScopes(t *testing.T) {
+	t.Parallel()
+	log := yall.New(testinglog.New(t, yall.Debug))
+	ctx := yall.InContext(context.Background(), log)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		checkURL(t, r, "/oauth2/v1/authorize")
+		checkMethod(t, r, http.MethodPost)
+		checkBasicAuth(t, r, "testClient", "veryverysecret")
+		checkURLFormEncodedBody(t, r, url.Values{
+			"response_type": []string{"email"},
+			"email":         []string{"test@lockbox.dev"},
+			"scope":         []string{"https://scopes.lockbox.dev/test https://scopes.lockbox.dev/test2 https://scopes.lockbox.dev/test3"},
+		})
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	client := testClient(ctx, t, server.URL, ClientCredentials{
+		ID:     "testClient",
+		Secret: "veryverysecret",
+	})
+
+	err := client.OAuth2.SendEmail(ctx, "test@lockbox.dev", []string{
+		"https://scopes.lockbox.dev/test",
+		"https://scopes.lockbox.dev/test2",
+		"https://scopes.lockbox.dev/test3",
+	})
+	if err != nil {
+		t.Fatalf("Error kicking off email flow: %s", err)
+	}
+}
+
+func TestOAuth2SendEmail_missingEmail(t *testing.T) {
+	t.Parallel()
+	log := yall.New(testinglog.New(t, yall.Debug))
+	ctx := yall.InContext(context.Background(), log)
+
+	server := staticResponseServer(t, http.StatusNoContent, nil)
+	defer server.Close()
+
+	client := testClient(ctx, t, server.URL, ClientCredentials{
+		ID:     "testClient",
+		Secret: "veryverysecret",
+	})
+	err := client.OAuth2.SendEmail(ctx, "", nil)
+	if err != ErrOAuth2RequestMissingEmail {
+		t.Errorf("Expected error %v, got %v instead", ErrOAuth2RequestMissingEmail, err)
+	}
+}
+
+func TestOAuth2SendEmail_errors(t *testing.T) {
+	t.Parallel()
+	tests := map[string]errorTest{
+		"unexpectedError": {
+			status: http.StatusBadRequest,
+			body:   []byte(`{"error": "foo"}`),
+			err:    ErrUnexpectedError,
+		},
+		"serverError": {
+			status: http.StatusInternalServerError,
+			body:   []byte(`{"error": "server_error"}`),
+			err:    ErrServerError,
+		},
+		"invalidClient": {
+			status: http.StatusUnauthorized,
+			body:   []byte(`{"error": "invalid_client"}`),
+			err:    ErrInvalidClientCredentialsError,
+		},
+		"invalidRequest": {
+			status: http.StatusBadRequest,
+			body:   []byte(`{"error": "invalid_request"}`),
+			err:    ErrInvalidRequestError,
+		},
+		"invalidGrant": {
+			status: http.StatusBadRequest,
+			body:   []byte(`{"error": "invalid_grant"}`),
+			err:    ErrInvalidGrantError,
+		},
+		"unsupportedResponseType": {
+			status: http.StatusBadRequest,
+			body:   []byte(`{"error": "unsupported_response_type"}`),
+			err:    ErrUnsupportedResponseTypeError,
+		},
+		"unexpectedBody": {
+			status: http.StatusOK,
+			body:   []byte(`{"errors": [{"field": "/whoops"}]}`),
+			err:    ErrUnexpectedBody,
+		},
+	}
+
+	for name, test := range tests {
+		name, test := name, test
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			log := yall.New(testinglog.New(t, yall.Debug))
+			ctx := yall.InContext(context.Background(), log)
+
+			server := staticResponseServer(t, test.status, test.body)
+			defer server.Close()
+
+			client := testClient(ctx, t, server.URL, ClientCredentials{
+				ID:     "testClient",
+				Secret: "veryverysecret",
+			})
+
+			err := client.OAuth2.SendEmail(ctx, "test@lockbox.dev", nil)
+			if err != test.err {
+				t.Errorf("Expected error %v, got %v instead", test.err, err)
+			}
+		})
+	}
+}
+
 // TODO: test happy path for exchanging email code
 // TODO: test unhappy paths for exchanging email code

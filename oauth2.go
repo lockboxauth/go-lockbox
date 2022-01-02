@@ -39,6 +39,10 @@ var (
 	// ErrUnsupportedResponseTypeError is returned when the server doesn't
 	// recognize the response type that go-lockbox is requesting.
 	ErrUnsupportedResponseTypeError = errors.New("unsupported response type; this is either a server or go-lockbox error")
+
+	// ErrUnexpectedBody is returned if a response body is returned for a
+	// request that doesn't expect a response.
+	ErrUnexpectedBody = errors.New("unexpected body; this request shouldn't return a body, but it did, possibly an error we didn't expect or couldn't parse. This is either a server or go-lockbox error")
 )
 
 // OAuth2Service is the oauth2 service. Set the BasePath to modify where
@@ -77,7 +81,7 @@ func (o OAuth2Service) ExchangeRefreshToken(ctx context.Context, token string, s
 		v.Set("scope", strings.Join(scopes, " "))
 	}
 	buf := bytes.NewBuffer([]byte(v.Encode()))
-	req, err := o.client.NewRequest(ctx, http.MethodPost, o.buildURL("/authorize"), buf)
+	req, err := o.client.NewRequest(ctx, http.MethodPost, o.buildURL("/token"), buf)
 	if err != nil {
 		return OAuth2Response{}, fmt.Errorf("error constructing request: %w", err)
 	}
@@ -135,7 +139,7 @@ func (o OAuth2Service) ExchangeGoogleIDToken(ctx context.Context, token string, 
 		v.Set("scope", strings.Join(scopes, " "))
 	}
 	buf := bytes.NewBuffer([]byte(v.Encode()))
-	req, err := o.client.NewRequest(ctx, http.MethodPost, o.buildURL("/authorize"), buf)
+	req, err := o.client.NewRequest(ctx, http.MethodPost, o.buildURL("/token"), buf)
 	if err != nil {
 		return OAuth2Response{}, fmt.Errorf("error constructing request: %w", err)
 	}
@@ -185,7 +189,7 @@ func (o OAuth2Service) SendEmail(ctx context.Context, email string, scopes []str
 	if email == "" {
 		return ErrOAuth2RequestMissingEmail
 	}
-	var v url.Values
+	v := url.Values{}
 	v.Set("response_type", "email")
 	v.Set("email", email)
 	if len(scopes) > 0 {
@@ -236,12 +240,12 @@ func (o OAuth2Service) SendEmail(ctx context.Context, email string, scopes []str
 	}
 	if res.StatusCode == http.StatusBadRequest &&
 		resp.Error == "unsupported_response_type" {
-		return fmt.Errorf("unsupported response type; this is either a server or go-lockbox error")
+		return ErrUnsupportedResponseTypeError
 	}
 	if resp.Error != "" {
 		return ErrUnexpectedError
 	}
-	return nil
+	return ErrUnexpectedBody
 }
 
 // ExchangeEmailCode uses the passed code, obtained from an authentication
@@ -255,7 +259,7 @@ func (o OAuth2Service) ExchangeEmailCode(ctx context.Context, code string) (OAut
 	v.Set("grant_type", "email")
 	v.Set("code", code)
 	buf := bytes.NewBuffer([]byte(v.Encode()))
-	req, err := o.client.NewRequest(ctx, http.MethodPost, o.buildURL("/authorize"), buf)
+	req, err := o.client.NewRequest(ctx, http.MethodPost, o.buildURL("/token"), buf)
 	if err != nil {
 		return OAuth2Response{}, fmt.Errorf("error constructing request: %w", err)
 	}
