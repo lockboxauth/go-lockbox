@@ -8,5 +8,7 @@ require (
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/nsf/jsondiff v0.0.0-20200515183724-f29ed568f4ce
 	lockbox.dev/hmac v0.2.0
-	yall.in v0.0.7
+	yall.in v0.0.8
 )
+
+require github.com/mitchellh/go-testing-interface v1.14.1 // indirect
