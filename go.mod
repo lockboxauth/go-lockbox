@@ -3,7 +3,7 @@ module lockbox.dev/go-lockbox
 go 1.17
 
 require (
-	github.com/google/go-cmp v0.5.7
+	github.com/google/go-cmp v0.5.8
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-uuid v1.0.3
 	github.com/nsf/jsondiff v0.0.0-20200515183724-f29ed568f4ce
