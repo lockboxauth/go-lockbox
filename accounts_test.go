@@ -2,6 +2,7 @@ package lockbox
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -63,7 +64,7 @@ func TestAccountsCreate_addAccount(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/accounts/v1")
 		checkMethod(t, r, http.MethodPost)
-		checkBearerToken(t, r, "test-access")
+		checkBearerToken(t, r, "test-access-add")
 		checkJSONBody(t, r, `{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "0001-01-01T00:00:00Z", "lastSeenAt": "0001-01-01T00:00:00Z", "lastUsedAt": "0001-01-01T00:00:00Z"}`)
 
 		w.WriteHeader(http.StatusOK)
@@ -72,7 +73,7 @@ func TestAccountsCreate_addAccount(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, AuthTokens{
-		Access:  "test-access",
+		Access:  "test-access-add",
 		Refresh: "test-refresh",
 	})
 
@@ -108,9 +109,8 @@ func TestAccountsCreate_noAccounts(t *testing.T) {
 		ID:             "test@lockbox.dev",
 		IsRegistration: true,
 	})
-	const errMsg = "no account returned in response; this is almost certainly a server error"
-	if err.Error() != errMsg {
-		t.Errorf("Expected error %v, got %v instead", errMsg, err)
+	if !errors.Is(err, ErrUnexpectedResponse) {
+		t.Errorf("Expected error %v, got %v instead", ErrUnexpectedResponse, err)
 	}
 }
 
@@ -165,7 +165,7 @@ func TestAccountsCreate_errors(t *testing.T) {
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, AuthTokens{
-				Access:  "test-access",
+				Access:  "test-access-add",
 				Refresh: "test-refresh",
 			})
 
@@ -173,7 +173,7 @@ func TestAccountsCreate_errors(t *testing.T) {
 				ID:             "test@lockbox.dev",
 				IsRegistration: true,
 			})
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
@@ -191,7 +191,7 @@ func TestAccountsGet_success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/accounts/v1/"+url.PathEscape("test@lockbox.dev"))
 		checkMethod(t, r, http.MethodGet)
-		checkBearerToken(t, r, "test-access")
+		checkBearerToken(t, r, "test-access-get")
 
 		w.WriteHeader(http.StatusOK)
 		mustWrite(t, w, []byte(`{"accounts": [{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "`+timestamp+`", "lastSeenAt": "`+timestamp+`", "lastUsedAt": "`+timestamp+`"}]}`))
@@ -199,7 +199,7 @@ func TestAccountsGet_success(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, AuthTokens{
-		Access:  "test-access",
+		Access:  "test-access-get",
 		Refresh: "test-refresh",
 	})
 
@@ -260,12 +260,12 @@ func TestAccountsGet_errors(t *testing.T) {
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, AuthTokens{
-				Access:  "test-access",
+				Access:  "test-access-get",
 				Refresh: "test-refresh",
 			})
 
 			_, err := client.Accounts.Get(ctx, "test@lockbox.dev")
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
@@ -281,13 +281,12 @@ func TestAccountsGet_noAccounts(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, AuthTokens{
-		Access:  "test-access",
+		Access:  "test-access-get",
 		Refresh: "test-refresh",
 	})
 	_, err := client.Accounts.Get(ctx, "test@lockbox.dev")
-	const errMsg = "no account returned in response; this is almost certainly a server error"
-	if err.Error() != errMsg {
-		t.Errorf("Expected error %v, got %v instead", errMsg, err)
+	if !errors.Is(err, ErrUnexpectedResponse) {
+		t.Errorf("Expected error %v, got %v instead", ErrUnexpectedResponse, err)
 	}
 }
 
@@ -300,11 +299,11 @@ func TestAccountsGet_missingID(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, AuthTokens{
-		Access:  "test-access",
+		Access:  "test-access-get",
 		Refresh: "test-refresh",
 	})
 	_, err := client.Accounts.Get(ctx, "")
-	if err != ErrAccountRequestMissingID {
+	if !errors.Is(err, ErrAccountRequestMissingID) {
 		t.Errorf("Expected error %v, got %v instead", ErrAccountRequestMissingID, err)
 	}
 }
@@ -319,7 +318,7 @@ func TestAccountsListByProfileID_success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/accounts/v1/?profileID=testing123")
 		checkMethod(t, r, http.MethodGet)
-		checkBearerToken(t, r, "test-access")
+		checkBearerToken(t, r, "test-access-by-profile")
 
 		w.WriteHeader(http.StatusOK)
 		mustWrite(t, w, []byte(`{"accounts": [`))
@@ -333,7 +332,7 @@ func TestAccountsListByProfileID_success(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, AuthTokens{
-		Access:  "test-access",
+		Access:  "test-access-by-profile",
 		Refresh: "test-refresh",
 	})
 
@@ -428,12 +427,12 @@ func TestAccountsListByProfileID_errors(t *testing.T) {
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, AuthTokens{
-				Access:  "test-access",
+				Access:  "test-access-by-profile",
 				Refresh: "test-refresh",
 			})
 
 			_, err := client.Accounts.ListByProfileID(ctx, "testing123")
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
@@ -449,11 +448,11 @@ func TestAccountsListByProfileID_missingProfileID(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, AuthTokens{
-		Access:  "test-access",
+		Access:  "test-access-by-profile",
 		Refresh: "test-refresh",
 	})
 	_, err := client.Accounts.ListByProfileID(ctx, "")
-	if err != ErrAccountRequestMissingProfileID {
+	if !errors.Is(err, ErrAccountRequestMissingProfileID) {
 		t.Errorf("Expected error %v, got %v instead", ErrAccountRequestMissingProfileID, err)
 	}
 }
@@ -469,7 +468,7 @@ func TestAccountsDelete_success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/accounts/v1/"+url.PathEscape("test@lockbox.dev"))
 		checkMethod(t, r, http.MethodDelete)
-		checkBearerToken(t, r, "test-access")
+		checkBearerToken(t, r, "test-access-delete")
 
 		w.WriteHeader(http.StatusOK)
 		mustWrite(t, w, []byte(`{"accounts": [{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "`+timestamp+`", "lastSeenAt": "`+timestamp+`", "lastUsedAt": "`+timestamp+`"}]}`))
@@ -477,7 +476,7 @@ func TestAccountsDelete_success(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, AuthTokens{
-		Access:  "test-access",
+		Access:  "test-access-delete",
 		Refresh: "test-refresh",
 	})
 
@@ -528,12 +527,12 @@ func TestAccountsDelete_errors(t *testing.T) {
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, AuthTokens{
-				Access:  "test-access",
+				Access:  "test-access-delete",
 				Refresh: "test-refresh",
 			})
 
 			err := client.Accounts.Delete(ctx, "test@lockbox.dev")
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
@@ -549,11 +548,11 @@ func TestAccountsDelete_missingID(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, AuthTokens{
-		Access:  "test-access",
+		Access:  "test-access-delete",
 		Refresh: "test-refresh",
 	})
 	err := client.Accounts.Delete(ctx, "")
-	if err != ErrAccountRequestMissingID {
+	if !errors.Is(err, ErrAccountRequestMissingID) {
 		t.Errorf("Expected error %v, got %v instead", ErrAccountRequestMissingID, err)
 	}
 }

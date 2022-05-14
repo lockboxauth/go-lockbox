@@ -13,6 +13,12 @@ import (
 
 const (
 	oauth2ServiceDefaultBasePath = "/oauth2/v1/"
+
+	oauth2ServerError                  = "server_error"
+	oauth2InvalidRequestError          = "invalid_request"
+	oauth2InvalidGrantError            = "invalid_grant"
+	oauth2InvalidClientError           = "invalid_client"
+	oauth2UnsupportedResponseTypeError = "unsupported_response_type"
 )
 
 var (
@@ -74,13 +80,13 @@ func (o OAuth2Service) ExchangeRefreshToken(ctx context.Context, token string, s
 	if token == "" {
 		return OAuth2Response{}, ErrOAuth2RequestMissingToken
 	}
-	v := url.Values{}
-	v.Set("grant_type", "refresh_token")
-	v.Set("refresh_token", token)
+	vals := url.Values{}
+	vals.Set("grant_type", "refresh_token")
+	vals.Set("refresh_token", token)
 	if len(scopes) > 0 {
-		v.Set("scope", strings.Join(scopes, " "))
+		vals.Set("scope", strings.Join(scopes, " "))
 	}
-	buf := bytes.NewBuffer([]byte(v.Encode()))
+	buf := bytes.NewBuffer([]byte(vals.Encode()))
 	req, err := o.client.NewRequest(ctx, http.MethodPost, o.buildURL("/token"), buf)
 	if err != nil {
 		return OAuth2Response{}, fmt.Errorf("error constructing request: %w", err)
@@ -100,23 +106,23 @@ func (o OAuth2Service) ExchangeRefreshToken(ctx context.Context, token string, s
 	}
 
 	if res.StatusCode == http.StatusInternalServerError &&
-		resp.Error == "server_error" {
+		resp.Error == oauth2ServerError {
 		return resp, ErrServerError
 	}
 	if res.StatusCode == http.StatusUnauthorized &&
-		resp.Error == "invalid_client" {
+		resp.Error == oauth2InvalidClientError {
 		return resp, ErrInvalidClientCredentialsError
 	}
 	if res.StatusCode == http.StatusBadRequest &&
-		resp.Error == "invalid_request" {
+		resp.Error == oauth2InvalidRequestError {
 		return resp, ErrInvalidRequestError
 	}
 	if res.StatusCode == http.StatusBadRequest &&
-		resp.Error == "invalid_grant" {
+		resp.Error == oauth2InvalidGrantError {
 		return resp, ErrInvalidGrantError
 	}
 	if res.StatusCode == http.StatusBadRequest &&
-		resp.Error == "unsupported_response_type" {
+		resp.Error == oauth2UnsupportedResponseTypeError {
 		return resp, ErrUnsupportedResponseTypeError
 	}
 	if resp.Error != "" {
@@ -132,13 +138,13 @@ func (o OAuth2Service) ExchangeGoogleIDToken(ctx context.Context, token string, 
 	if token == "" {
 		return OAuth2Response{}, ErrOAuth2RequestMissingToken
 	}
-	v := url.Values{}
-	v.Set("grant_type", "google_id")
-	v.Set("id_token", token)
+	vals := url.Values{}
+	vals.Set("grant_type", "google_id")
+	vals.Set("id_token", token)
 	if len(scopes) > 0 {
-		v.Set("scope", strings.Join(scopes, " "))
+		vals.Set("scope", strings.Join(scopes, " "))
 	}
-	buf := bytes.NewBuffer([]byte(v.Encode()))
+	buf := bytes.NewBuffer([]byte(vals.Encode()))
 	req, err := o.client.NewRequest(ctx, http.MethodPost, o.buildURL("/token"), buf)
 	if err != nil {
 		return OAuth2Response{}, fmt.Errorf("error constructing request: %w", err)
@@ -158,23 +164,23 @@ func (o OAuth2Service) ExchangeGoogleIDToken(ctx context.Context, token string, 
 	}
 
 	if res.StatusCode == http.StatusInternalServerError &&
-		resp.Error == "server_error" {
+		resp.Error == oauth2ServerError {
 		return resp, ErrServerError
 	}
 	if res.StatusCode == http.StatusUnauthorized &&
-		resp.Error == "invalid_client" {
+		resp.Error == oauth2InvalidClientError {
 		return resp, ErrInvalidClientCredentialsError
 	}
 	if res.StatusCode == http.StatusBadRequest &&
-		resp.Error == "invalid_request" {
+		resp.Error == oauth2InvalidRequestError {
 		return resp, ErrInvalidRequestError
 	}
 	if res.StatusCode == http.StatusBadRequest &&
-		resp.Error == "invalid_grant" {
+		resp.Error == oauth2InvalidGrantError {
 		return resp, ErrInvalidGrantError
 	}
 	if res.StatusCode == http.StatusBadRequest &&
-		resp.Error == "unsupported_response_type" {
+		resp.Error == oauth2UnsupportedResponseTypeError {
 		return resp, ErrUnsupportedResponseTypeError
 	}
 	if resp.Error != "" {
@@ -189,13 +195,13 @@ func (o OAuth2Service) SendEmail(ctx context.Context, email string, scopes []str
 	if email == "" {
 		return ErrOAuth2RequestMissingEmail
 	}
-	v := url.Values{}
-	v.Set("response_type", "email")
-	v.Set("email", email)
+	vals := url.Values{}
+	vals.Set("response_type", "email")
+	vals.Set("email", email)
 	if len(scopes) > 0 {
-		v.Set("scope", strings.Join(scopes, " "))
+		vals.Set("scope", strings.Join(scopes, " "))
 	}
-	buf := bytes.NewBuffer([]byte(v.Encode()))
+	buf := bytes.NewBuffer([]byte(vals.Encode()))
 	req, err := o.client.NewRequest(ctx, http.MethodPost, o.buildURL("/authorize"), buf)
 	if err != nil {
 		return fmt.Errorf("error constructing request: %w", err)
@@ -223,23 +229,23 @@ func (o OAuth2Service) SendEmail(ctx context.Context, email string, scopes []str
 	}
 
 	if res.StatusCode == http.StatusInternalServerError &&
-		resp.Error == "server_error" {
+		resp.Error == oauth2ServerError {
 		return ErrServerError
 	}
 	if res.StatusCode == http.StatusUnauthorized &&
-		resp.Error == "invalid_client" {
+		resp.Error == oauth2InvalidClientError {
 		return ErrInvalidClientCredentialsError
 	}
 	if res.StatusCode == http.StatusBadRequest &&
-		resp.Error == "invalid_request" {
+		resp.Error == oauth2InvalidRequestError {
 		return ErrInvalidRequestError
 	}
 	if res.StatusCode == http.StatusBadRequest &&
-		resp.Error == "invalid_grant" {
+		resp.Error == oauth2InvalidGrantError {
 		return ErrInvalidGrantError
 	}
 	if res.StatusCode == http.StatusBadRequest &&
-		resp.Error == "unsupported_response_type" {
+		resp.Error == oauth2UnsupportedResponseTypeError {
 		return ErrUnsupportedResponseTypeError
 	}
 	if resp.Error != "" {
@@ -280,23 +286,23 @@ func (o OAuth2Service) ExchangeEmailCode(ctx context.Context, code string) (OAut
 	}
 
 	if res.StatusCode == http.StatusInternalServerError &&
-		resp.Error == "server_error" {
+		resp.Error == oauth2ServerError {
 		return resp, ErrServerError
 	}
 	if res.StatusCode == http.StatusUnauthorized &&
-		resp.Error == "invalid_client" {
+		resp.Error == oauth2InvalidClientError {
 		return resp, ErrInvalidClientCredentialsError
 	}
 	if res.StatusCode == http.StatusBadRequest &&
-		resp.Error == "invalid_request" {
+		resp.Error == oauth2InvalidRequestError {
 		return resp, ErrInvalidRequestError
 	}
 	if res.StatusCode == http.StatusBadRequest &&
-		resp.Error == "invalid_grant" {
+		resp.Error == oauth2InvalidGrantError {
 		return resp, ErrInvalidGrantError
 	}
 	if res.StatusCode == http.StatusBadRequest &&
-		resp.Error == "unsupported_response_type" {
+		resp.Error == oauth2UnsupportedResponseTypeError {
 		return resp, ErrUnsupportedResponseTypeError
 	}
 	if resp.Error != "" {

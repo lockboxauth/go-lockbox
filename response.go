@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+
+	"github.com/hashicorp/go-multierror"
 )
 
 const (
@@ -51,6 +53,14 @@ var (
 	// filed about it. The logs can provide more information on what the
 	// error is.
 	ErrUnexpectedError = errors.New("unexpected error in response")
+
+	// ErrUnexpectedResponse is returned when a Response is returned that
+	// doesn't make sense or that go-lockbox wasn't expecting. It's often
+	// used in situations where ignoring it would cause a panic. This is
+	// usually indicative of a bug in go-lockbox or the server, and an
+	// issue should be filed about it. There's not much a caller can do
+	// about these errors.
+	ErrUnexpectedResponse = errors.New("unexpected response")
 )
 
 // Response is the standard response format we get back from every service,
@@ -63,13 +73,18 @@ type Response struct {
 	Errors       RequestErrors `json:"errors,omitempty"`
 }
 
-func responseFromBody(resp *http.Response) (Response, error) {
-	defer resp.Body.Close()
+func responseFromBody(resp *http.Response) (res Response, returnErr error) {
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			returnErr = multierror.Append(returnErr, fmt.Errorf("error closing response body: %w", err))
+		}
+	}()
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return Response{}, fmt.Errorf("error reading response body: %w", err)
 	}
-	var res Response
+	res = Response{}
 	err = json.Unmarshal(b, &res)
 	if err != nil {
 		return Response{}, fmt.Errorf("error parsing response body: %w", err)
@@ -77,38 +92,43 @@ func responseFromBody(resp *http.Response) (Response, error) {
 	return res, nil
 }
 
-func oauthResponse(resp *http.Response) (OAuth2Response, error) {
-	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+func oauthResponse(resp *http.Response) (res OAuth2Response, returnErr error) {
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			returnErr = multierror.Append(returnErr, fmt.Errorf("error closing response body: %w", err))
+		}
+	}()
+	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return OAuth2Response{}, fmt.Errorf("error reading response body: %w", err)
 	}
-	var res OAuth2Response
-	err = json.Unmarshal(b, &res)
+	res = OAuth2Response{}
+	err = json.Unmarshal(respBody, &res)
 	if err != nil {
-		return res, fmt.Errorf("error parsing response body %q: %w", string(b), err)
+		return res, fmt.Errorf("error parsing response body %q: %w", string(respBody), err)
 	}
 	return res, nil
 }
 
 // OAuth2ResponseFromParams decodes the URL parameters passed in and returns an
 // OAuth2Response from their values.
-func OAuth2ResponseFromParams(v url.Values) (OAuth2Response, error) {
+func OAuth2ResponseFromParams(vals url.Values) (OAuth2Response, error) {
 	var expiresIn int
-	if e := v.Get("expires_in"); e != "" {
+	if e := vals.Get("expires_in"); e != "" {
 		eint, err := strconv.Atoi(e)
 		if err != nil {
-			return OAuth2Response{}, fmt.Errorf("error parsing expires_in as integer")
+			return OAuth2Response{}, fmt.Errorf("error parsing expires_in as integer: %w", err)
 		}
 		expiresIn = eint
 	}
 	return OAuth2Response{
-		AccessToken:  v.Get("access_token"),
-		TokenType:    v.Get("token_type"),
+		AccessToken:  vals.Get("access_token"),
+		TokenType:    vals.Get("token_type"),
 		ExpiresIn:    expiresIn,
-		RefreshToken: v.Get("refresh_token"),
-		Scope:        v.Get("scope"),
-		Error:        v.Get("error"),
+		RefreshToken: vals.Get("refresh_token"),
+		Scope:        vals.Get("scope"),
+		Error:        vals.Get("error"),
 	}, nil
 }
 
@@ -154,13 +174,13 @@ func (e RequestErrors) Contains(err RequestError) bool {
 
 // FieldMatches checks if any RequestError in e has the specified slug and a
 // field that matches the passed regular expression.
-func (e RequestErrors) FieldMatches(slug string, re *regexp.Regexp) [][]string {
+func (e RequestErrors) FieldMatches(slug string, reg *regexp.Regexp) [][]string {
 	for _, candidate := range e {
 		if candidate.Slug != slug {
 			continue
 		}
-		if re.MatchString(candidate.Field) {
-			return re.FindAllStringSubmatch(candidate.Field, -1)
+		if reg.MatchString(candidate.Field) {
+			return reg.FindAllStringSubmatch(candidate.Field, -1)
 		}
 	}
 	return nil

@@ -1,6 +1,8 @@
 package lockbox
 
-import "runtime/debug"
+import (
+	"runtime/debug"
+)
 
 var versionOverride string
 

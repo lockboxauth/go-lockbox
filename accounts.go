@@ -138,7 +138,7 @@ func (a AccountsService) Create(ctx context.Context, account Account) (Account, 
 	}
 
 	if len(resp.Accounts) < 1 {
-		return Account{}, fmt.Errorf("no account returned in response; this is almost certainly a server error")
+		return Account{}, fmt.Errorf("%w: no account found", ErrUnexpectedResponse)
 	}
 	return resp.Accounts[0], nil
 }
@@ -199,7 +199,7 @@ func (a AccountsService) Get(ctx context.Context, id string) (Account, error) {
 	}
 
 	if len(resp.Accounts) < 1 {
-		return Account{}, fmt.Errorf("no account returned in response; this is almost certainly a server error")
+		return Account{}, fmt.Errorf("%w: no account found", ErrUnexpectedResponse)
 	}
 	return resp.Accounts[0], nil
 }

@@ -216,7 +216,7 @@ func (s ScopesService) Create(ctx context.Context, scope Scope) (Scope, error) {
 	}
 
 	if len(resp.Scopes) < 1 {
-		return Scope{}, fmt.Errorf("no scopes in the response; this is almost certainly a server error")
+		return Scope{}, fmt.Errorf("%w: no scopes found", ErrUnexpectedResponse)
 	}
 	return resp.Scopes[0], nil
 }
@@ -291,7 +291,7 @@ func (s ScopesService) Update(ctx context.Context, id string, change ScopeChange
 	}
 
 	if len(resp.Scopes) < 1 {
-		return Scope{}, fmt.Errorf("no scopes in the response; this is almost certainly a server error")
+		return Scope{}, fmt.Errorf("%w: no scopes found", ErrUnexpectedResponse)
 	}
 	return resp.Scopes[0], nil
 }
@@ -345,7 +345,7 @@ func (s ScopesService) Get(ctx context.Context, id string) (Scope, error) {
 	}
 
 	if len(resp.Scopes) < 1 {
-		return Scope{}, fmt.Errorf("no scopes in the response; this is almost certainly a server error")
+		return Scope{}, fmt.Errorf("%w: no scopes found", ErrUnexpectedResponse)
 	}
 	return resp.Scopes[0], nil
 }

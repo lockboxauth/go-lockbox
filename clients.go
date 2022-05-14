@@ -47,19 +47,19 @@ var (
 	redirectURIIDIndexRegexp  = regexp.MustCompile("^/redirectURIs/([0-9]*)/id$")
 )
 
-// ErrRedirectURIURIMissing is an error type indicating the RedirectURI that
+// RedirectURIURIMissingError is an error type indicating the RedirectURI that
 // has no URI set when a URI is required.
-type ErrRedirectURIURIMissing RedirectURI
+type RedirectURIURIMissingError RedirectURI
 
-func (e ErrRedirectURIURIMissing) Error() string {
+func (e RedirectURIURIMissingError) Error() string {
 	return fmt.Sprintf("redirect URI %s must have its URI set", e.ID)
 }
 
-// ErrRedirectURIIDConflict is an error type indicating the RedirectURI that
+// RedirectURIIDConflictError is an error type indicating the RedirectURI that
 // has an ID that already exists.
-type ErrRedirectURIIDConflict RedirectURI
+type RedirectURIIDConflictError RedirectURI
 
-func (e ErrRedirectURIIDConflict) Error() string {
+func (e RedirectURIIDConflictError) Error() string {
 	return fmt.Sprintf("redirect URI %s has an ID that has already been used", e.ID)
 }
 
@@ -157,7 +157,7 @@ func (c ClientsService) Create(ctx context.Context, client APIClient) (APIClient
 	}
 
 	if len(resp.Clients) < 1 {
-		return APIClient{}, fmt.Errorf("no client found in response; this is almost certainly a server error")
+		return APIClient{}, fmt.Errorf("%w: no client found", ErrUnexpectedResponse)
 	}
 	return resp.Clients[0], nil
 }
@@ -211,7 +211,7 @@ func (c ClientsService) Get(ctx context.Context, id string) (APIClient, error) {
 	}
 
 	if len(resp.Clients) < 1 {
-		return APIClient{}, fmt.Errorf("no client found in response; this is almost certainly a server error")
+		return APIClient{}, fmt.Errorf("%w: no client found", ErrUnexpectedResponse)
 	}
 	return resp.Clients[0], nil
 }
@@ -316,7 +316,7 @@ func (c ClientsService) ResetSecret(ctx context.Context, id string) (APIClient, 
 	}
 
 	if len(resp.Clients) < 1 {
-		return APIClient{}, fmt.Errorf("no client found in response; this is almost certainly a server error")
+		return APIClient{}, fmt.Errorf("%w: no client found", ErrUnexpectedResponse)
 	}
 	return resp.Clients[0], nil
 }
@@ -434,9 +434,8 @@ func (c ClientsService) CreateRedirectURIs(ctx context.Context, id string, uris 
 				yall.FromContext(ctx).WithError(err).WithField("field_value", matches[0][0]).Error("error parsing which redirect URI caused an error")
 			} else if len(uris) <= pos {
 				yall.FromContext(ctx).WithField("field_value", matches[0][0]).Error("error parsing which redirect URI caused an error; returned error points to a redirect URI that wasn't passed")
-			} else {
-				return nil, ErrRedirectURIURIMissing(uris[pos])
 			}
+			return nil, RedirectURIURIMissingError(uris[pos])
 		}
 	}
 	if matches := resp.Errors.FieldMatches(requestErrConflict, redirectURIIDIndexRegexp); matches != nil {
@@ -447,9 +446,8 @@ func (c ClientsService) CreateRedirectURIs(ctx context.Context, id string, uris 
 				yall.FromContext(ctx).WithError(err).WithField("field_value", matches[0][0]).Error("error parsing which redirect URI caused an error")
 			} else if len(uris) <= pos {
 				yall.FromContext(ctx).WithField("field_value", matches[0][0]).Error("error parsing which redirect URI caused an error; returned error points to a redirect URI that wasn't passed")
-			} else {
-				return nil, ErrRedirectURIIDConflict(uris[pos])
 			}
+			return nil, RedirectURIIDConflictError(uris[pos])
 		}
 	}
 

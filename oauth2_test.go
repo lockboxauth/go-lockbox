@@ -2,6 +2,7 @@ package lockbox
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -20,7 +21,7 @@ func TestOAuth2ExchangeRefreshToken_oneScope(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/oauth2/v1/token")
 		checkMethod(t, r, http.MethodPost)
-		checkBasicAuth(t, r, "testClient", "veryverysecret")
+		checkBasicAuth(t, r, "testClient_exchange_oneScope", "veryverysecret_exchange_oneScope")
 		checkURLFormEncodedBody(t, r, url.Values{
 			"grant_type":    []string{"refresh_token"},
 			"refresh_token": []string{"mytesttoken"},
@@ -31,8 +32,8 @@ func TestOAuth2ExchangeRefreshToken_oneScope(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, ClientCredentials{
-		ID:     "testClient",
-		Secret: "veryverysecret",
+		ID:     "testClient_exchange_oneScope",
+		Secret: "veryverysecret_exchange_oneScope",
 	})
 
 	resp, err := client.OAuth2.ExchangeRefreshToken(ctx, "mytesttoken", []string{
@@ -60,7 +61,7 @@ func TestOAuth2ExchangeRefreshToken_noScope(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/oauth2/v1/token")
 		checkMethod(t, r, http.MethodPost)
-		checkBasicAuth(t, r, "testClient", "veryverysecret")
+		checkBasicAuth(t, r, "testClient_exchange_noScope", "veryverysecret_exchange_noScope")
 		checkURLFormEncodedBody(t, r, url.Values{
 			"grant_type":    []string{"refresh_token"},
 			"refresh_token": []string{"mytesttoken"},
@@ -70,8 +71,8 @@ func TestOAuth2ExchangeRefreshToken_noScope(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, ClientCredentials{
-		ID:     "testClient",
-		Secret: "veryverysecret",
+		ID:     "testClient_exchange_noScope",
+		Secret: "veryverysecret_exchange_noScope",
 	})
 
 	resp, err := client.OAuth2.ExchangeRefreshToken(ctx, "mytesttoken", nil)
@@ -97,7 +98,7 @@ func TestOAuth2ExchangeRefreshToken_threeScopes(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/oauth2/v1/token")
 		checkMethod(t, r, http.MethodPost)
-		checkBasicAuth(t, r, "testClient", "veryverysecret")
+		checkBasicAuth(t, r, "testClient_exchange_threeScopes", "veryverysecret_exchange_threeScopes")
 		checkURLFormEncodedBody(t, r, url.Values{
 			"grant_type":    []string{"refresh_token"},
 			"refresh_token": []string{"mytesttoken"},
@@ -108,8 +109,8 @@ func TestOAuth2ExchangeRefreshToken_threeScopes(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, ClientCredentials{
-		ID:     "testClient",
-		Secret: "veryverysecret",
+		ID:     "testClient_exchange_threeScopes",
+		Secret: "veryverysecret_exchange_threeScopes",
 	})
 
 	resp, err := client.OAuth2.ExchangeRefreshToken(ctx, "mytesttoken", []string{
@@ -177,12 +178,12 @@ func TestOAuth2ExchangeRefreshToken_errors(t *testing.T) {
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, ClientCredentials{
-				ID:     "testClient",
-				Secret: "veryverysecret",
+				ID:     "testClient_exchange_errors",
+				Secret: "veryverysecret_exchange_errors",
 			})
 
 			_, err := client.OAuth2.ExchangeRefreshToken(ctx, "my-test-token", nil)
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
@@ -198,11 +199,11 @@ func TestOAuth2ExchangeRefreshToken_missingToken(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, ClientCredentials{
-		ID:     "testClient",
-		Secret: "veryverysecret",
+		ID:     "testClient_exchange_missing",
+		Secret: "veryverysecret_exchange_missing",
 	})
 	_, err := client.OAuth2.ExchangeRefreshToken(ctx, "", nil)
-	if err != ErrOAuth2RequestMissingToken {
+	if !errors.Is(err, ErrOAuth2RequestMissingToken) {
 		t.Errorf("Expected error %v, got %v instead", ErrOAuth2RequestMissingToken, err)
 	}
 }
@@ -215,7 +216,7 @@ func TestOAuth2ExchangeGoogleIDToken_oneScope(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/oauth2/v1/token")
 		checkMethod(t, r, http.MethodPost)
-		checkBasicAuth(t, r, "testClient", "veryverysecret")
+		checkBasicAuth(t, r, "testClient_google_oneScope", "veryverysecret_google_oneScope")
 		checkURLFormEncodedBody(t, r, url.Values{
 			"grant_type": []string{"google_id"},
 			"id_token":   []string{"mytesttoken"},
@@ -226,8 +227,8 @@ func TestOAuth2ExchangeGoogleIDToken_oneScope(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, ClientCredentials{
-		ID:     "testClient",
-		Secret: "veryverysecret",
+		ID:     "testClient_google_oneScope",
+		Secret: "veryverysecret_google_oneScope",
 	})
 
 	resp, err := client.OAuth2.ExchangeGoogleIDToken(ctx, "mytesttoken", []string{
@@ -255,7 +256,7 @@ func TestOAuth2ExchangeGoogleIDToken_noScope(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/oauth2/v1/token")
 		checkMethod(t, r, http.MethodPost)
-		checkBasicAuth(t, r, "testClient", "veryverysecret")
+		checkBasicAuth(t, r, "testClient_google_noScope", "veryverysecret_google_noScope")
 		checkURLFormEncodedBody(t, r, url.Values{
 			"grant_type": []string{"google_id"},
 			"id_token":   []string{"mytesttoken"},
@@ -265,8 +266,8 @@ func TestOAuth2ExchangeGoogleIDToken_noScope(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, ClientCredentials{
-		ID:     "testClient",
-		Secret: "veryverysecret",
+		ID:     "testClient_google_noScope",
+		Secret: "veryverysecret_google_noScope",
 	})
 
 	resp, err := client.OAuth2.ExchangeGoogleIDToken(ctx, "mytesttoken", nil)
@@ -292,7 +293,7 @@ func TestOAuth2ExchangeGoogleIDToken_threeScopes(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/oauth2/v1/token")
 		checkMethod(t, r, http.MethodPost)
-		checkBasicAuth(t, r, "testClient", "veryverysecret")
+		checkBasicAuth(t, r, "testClient_google_threeScopes", "veryverysecret_google_threeScopes")
 		checkURLFormEncodedBody(t, r, url.Values{
 			"grant_type": []string{"google_id"},
 			"id_token":   []string{"mytesttoken"},
@@ -303,8 +304,8 @@ func TestOAuth2ExchangeGoogleIDToken_threeScopes(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, ClientCredentials{
-		ID:     "testClient",
-		Secret: "veryverysecret",
+		ID:     "testClient_google_threeScopes",
+		Secret: "veryverysecret_google_threeScopes",
 	})
 
 	resp, err := client.OAuth2.ExchangeGoogleIDToken(ctx, "mytesttoken", []string{
@@ -372,12 +373,12 @@ func TestOAuth2ExchangeGoogleIDToken_errors(t *testing.T) {
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, ClientCredentials{
-				ID:     "testClient",
-				Secret: "veryverysecret",
+				ID:     "testClient_google_errors",
+				Secret: "veryverysecret_google_errors",
 			})
 
 			_, err := client.OAuth2.ExchangeGoogleIDToken(ctx, "my-test-token", nil)
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
@@ -393,11 +394,11 @@ func TestOAuth2ExchangeGoogleIDToken_missingToken(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, ClientCredentials{
-		ID:     "testClient",
-		Secret: "veryverysecret",
+		ID:     "testClient_google_missing",
+		Secret: "veryverysecret_google_missing",
 	})
 	_, err := client.OAuth2.ExchangeGoogleIDToken(ctx, "", nil)
-	if err != ErrOAuth2RequestMissingToken {
+	if !errors.Is(err, ErrOAuth2RequestMissingToken) {
 		t.Errorf("Expected error %v, got %v instead", ErrOAuth2RequestMissingToken, err)
 	}
 }
@@ -410,7 +411,7 @@ func TestOAuth2SendEmail_oneScope(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/oauth2/v1/authorize")
 		checkMethod(t, r, http.MethodPost)
-		checkBasicAuth(t, r, "testClient", "veryverysecret")
+		checkBasicAuth(t, r, "testClient_email_oneScope", "veryverysecret_email_oneScope")
 		checkURLFormEncodedBody(t, r, url.Values{
 			"response_type": []string{"email"},
 			"email":         []string{"test@lockbox.dev"},
@@ -421,8 +422,8 @@ func TestOAuth2SendEmail_oneScope(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, ClientCredentials{
-		ID:     "testClient",
-		Secret: "veryverysecret",
+		ID:     "testClient_email_oneScope",
+		Secret: "veryverysecret_email_oneScope",
 	})
 
 	err := client.OAuth2.SendEmail(ctx, "test@lockbox.dev", []string{
@@ -441,7 +442,7 @@ func TestOAuth2SendEmail_noScope(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/oauth2/v1/authorize")
 		checkMethod(t, r, http.MethodPost)
-		checkBasicAuth(t, r, "testClient", "veryverysecret")
+		checkBasicAuth(t, r, "testClient_email_noScope", "veryverysecret_email_noScope")
 		checkURLFormEncodedBody(t, r, url.Values{
 			"response_type": []string{"email"},
 			"email":         []string{"test@lockbox.dev"},
@@ -451,8 +452,8 @@ func TestOAuth2SendEmail_noScope(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, ClientCredentials{
-		ID:     "testClient",
-		Secret: "veryverysecret",
+		ID:     "testClient_email_noScope",
+		Secret: "veryverysecret_email_noScope",
 	})
 
 	err := client.OAuth2.SendEmail(ctx, "test@lockbox.dev", nil)
@@ -469,7 +470,7 @@ func TestOAuth2SendEmail_threeScopes(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/oauth2/v1/authorize")
 		checkMethod(t, r, http.MethodPost)
-		checkBasicAuth(t, r, "testClient", "veryverysecret")
+		checkBasicAuth(t, r, "testClient_email_threeScopes", "veryverysecret_email_threeScopes")
 		checkURLFormEncodedBody(t, r, url.Values{
 			"response_type": []string{"email"},
 			"email":         []string{"test@lockbox.dev"},
@@ -480,8 +481,8 @@ func TestOAuth2SendEmail_threeScopes(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, ClientCredentials{
-		ID:     "testClient",
-		Secret: "veryverysecret",
+		ID:     "testClient_email_threeScopes",
+		Secret: "veryverysecret_email_threeScopes",
 	})
 
 	err := client.OAuth2.SendEmail(ctx, "test@lockbox.dev", []string{
@@ -503,11 +504,11 @@ func TestOAuth2SendEmail_missingEmail(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, ClientCredentials{
-		ID:     "testClient",
-		Secret: "veryverysecret",
+		ID:     "testClient_email_missing",
+		Secret: "veryverysecret_email_missing",
 	})
 	err := client.OAuth2.SendEmail(ctx, "", nil)
-	if err != ErrOAuth2RequestMissingEmail {
+	if !errors.Is(err, ErrOAuth2RequestMissingEmail) {
 		t.Errorf("Expected error %v, got %v instead", ErrOAuth2RequestMissingEmail, err)
 	}
 }
@@ -563,12 +564,12 @@ func TestOAuth2SendEmail_errors(t *testing.T) {
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, ClientCredentials{
-				ID:     "testClient",
-				Secret: "veryverysecret",
+				ID:     "testClient_email_errors",
+				Secret: "veryverysecret_email_errors",
 			})
 
 			err := client.OAuth2.SendEmail(ctx, "test@lockbox.dev", nil)
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
@@ -583,7 +584,7 @@ func TestOAuth2ExchangeEmailCode(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/oauth2/v1/token")
 		checkMethod(t, r, http.MethodPost)
-		checkBasicAuth(t, r, "testClient", "veryverysecret")
+		checkBasicAuth(t, r, "testClient_emailcode", "veryverysecret_emailcode")
 		checkURLFormEncodedBody(t, r, url.Values{
 			"grant_type": []string{"email"},
 			"code":       []string{"mytestcode"},
@@ -593,8 +594,8 @@ func TestOAuth2ExchangeEmailCode(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, ClientCredentials{
-		ID:     "testClient",
-		Secret: "veryverysecret",
+		ID:     "testClient_emailcode",
+		Secret: "veryverysecret_emailcode",
 	})
 
 	resp, err := client.OAuth2.ExchangeEmailCode(ctx, "mytestcode")
@@ -621,11 +622,11 @@ func TestOAuth2ExchangeEmailCode_missingCode(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(ctx, t, server.URL, ClientCredentials{
-		ID:     "testClient",
-		Secret: "veryverysecret",
+		ID:     "testClient_emailcode_missing",
+		Secret: "veryverysecret_emailcode_missing",
 	})
 	_, err := client.OAuth2.ExchangeEmailCode(ctx, "")
-	if err != ErrOAuth2RequestMissingCode {
+	if !errors.Is(err, ErrOAuth2RequestMissingCode) {
 		t.Errorf("Expected error %v, got %v instead", ErrOAuth2RequestMissingCode, err)
 	}
 }
@@ -676,12 +677,12 @@ func TestOAuth2ExchangeEmailCode_errors(t *testing.T) {
 			defer server.Close()
 
 			client := testClient(ctx, t, server.URL, ClientCredentials{
-				ID:     "testClient",
-				Secret: "veryverysecret",
+				ID:     "testClient_emailcode_errors",
+				Secret: "veryverysecret_emailcode_errors",
 			})
 
 			_, err := client.OAuth2.ExchangeEmailCode(ctx, "testcode")
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})

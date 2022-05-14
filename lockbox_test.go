@@ -15,9 +15,10 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/go-uuid"
 	"github.com/nsf/jsondiff"
-	"lockbox.dev/hmac"
 	"yall.in"
 	testinglog "yall.in/testing"
+
+	"lockbox.dev/hmac"
 )
 
 type errorTest struct {
@@ -36,8 +37,7 @@ func uuidOrFail(t *testing.T) string {
 }
 
 func mustWrite(t *testing.T, w http.ResponseWriter, b []byte) {
-	_, err := w.Write(b)
-	if err != nil {
+	if _, err := w.Write(b); err != nil {
 		t.Errorf("Error writing response: %s", err)
 	}
 }
@@ -49,8 +49,8 @@ func staticResponseServer(t *testing.T, code int, body []byte) *httptest.Server 
 	}))
 }
 
-func testClient(ctx context.Context, t *testing.T, url string, auth ...AuthMethod) *Client {
-	client, err := NewClient(ctx, url, auth...)
+func testClient(ctx context.Context, t *testing.T, baseURL string, auth ...AuthMethod) *Client {
+	client, err := NewClient(ctx, baseURL, auth...)
 	if err != nil {
 		t.Fatalf("Error creating client: %s", err)
 	}
@@ -81,10 +81,14 @@ func checkJSONBody(t *testing.T, r *http.Request, expected string) {
 		t.Fatalf("Error cloning request: %s", err)
 	}
 	body, err := ioutil.ReadAll(req.Body)
-	defer req.Body.Close()
 	if err != nil {
 		t.Fatalf("Error reading body: %s", err)
 	}
+	defer func() {
+		if err = req.Body.Close(); err != nil {
+			t.Errorf("Error closing body: %v", err)
+		}
+	}()
 	opts := jsondiff.DefaultConsoleOptions()
 	diff, output := jsondiff.Compare(body, []byte(expected), &opts)
 	if diff != jsondiff.FullMatch {
@@ -99,10 +103,14 @@ func checkURLFormEncodedBody(t *testing.T, r *http.Request, expected url.Values)
 		t.Fatalf("Error cloning request: %s", err)
 	}
 	body, err := ioutil.ReadAll(req.Body)
-	defer req.Body.Close()
 	if err != nil {
 		t.Fatalf("Error reading body: %s", err)
 	}
+	defer func() {
+		if err = req.Body.Close(); err != nil {
+			t.Errorf("Error closing body: %v", err)
+		}
+	}()
 	got, err := url.ParseQuery(string(body))
 	if err != nil {
 		t.Fatalf("Error parsing body as URL-encoded query string: %s", err)
@@ -127,18 +135,18 @@ func checkBearerToken(t *testing.T, r *http.Request, expected string) {
 
 func checkBasicAuth(t *testing.T, r *http.Request, username, password string) {
 	t.Helper()
-	un, pw, ok := r.BasicAuth()
+	user, pass, ok := r.BasicAuth()
 	if !ok && (username != "" || password != "") {
 		t.Errorf("username expected to be %q, password expected to be %q, but no basic auth set", username, password)
 	}
 	if ok && username == "" && password == "" {
-		t.Errorf("no basic auth expected to be set, but got username of %q and password of %q", un, pw)
+		t.Errorf("no basic auth expected to be set, but got username of %q and password of %q", user, pass)
 	}
-	if un != username {
-		t.Errorf("expected username to be %q, got %q", username, un)
+	if user != username {
+		t.Errorf("expected username to be %q, got %q", username, user)
 	}
-	if pw != password {
-		t.Errorf("expected password to be %q, got %q", password, pw)
+	if pass != password {
+		t.Errorf("expected password to be %q, got %q", password, pass)
 	}
 }
 
@@ -160,13 +168,17 @@ func checkHMACAuthorization(t *testing.T, r *http.Request, auth HMACAuth) {
 		t.Fatalf("Error cloning request: %s", err)
 	}
 	body, err := ioutil.ReadAll(req.Body)
-	defer req.Body.Close()
 	if err != nil {
 		t.Fatalf("Error reading body: %s", err)
 	}
-	hash := base64.StdEncoding.EncodeToString(sha256.New().Sum([]byte(body)))
+	defer func() {
+		if err = req.Body.Close(); err != nil {
+			t.Errorf("Error closing body: %v", err)
+		}
+	}()
+	hash := base64.StdEncoding.EncodeToString(sha256.New().Sum(body))
 	signer := hmac.Signer{
-		Secret:  []byte(auth.Secret),
+		Secret:  auth.Secret,
 		MaxSkew: auth.MaxSkew,
 		OrgKey:  auth.OrgKey,
 		Key:     auth.Key,

@@ -2,6 +2,7 @@ package lockbox
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -21,7 +22,7 @@ func TestClientsCreate_success(t *testing.T) {
 
 	createdAt := time.Now().Round(time.Second)
 	createdAtStamp := createdAt.Format(time.RFC3339)
-	createdBy := "testuser"
+	createdBy := "testusercreate"
 	createdByIP := "1.1.1.1"
 	secret := "thisisverysecret"
 
@@ -96,9 +97,8 @@ func TestClientsCreate_noClients(t *testing.T) {
 		Confidential: true,
 	})
 
-	const errMsg = "no client found in response; this is almost certainly a server error"
-	if err.Error() != errMsg {
-		t.Errorf("Expected error %v, got %v instead", errMsg, err)
+	if !errors.Is(err, ErrUnexpectedResponse) {
+		t.Errorf("Expected error %v, got %v instead", ErrUnexpectedResponse, err)
 	}
 }
 
@@ -160,7 +160,7 @@ func TestClientsCreate_errors(t *testing.T) {
 				Confidential: true,
 			})
 
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
@@ -266,7 +266,7 @@ func TestClientsGet_errors(t *testing.T) {
 			})
 
 			_, err := client.Clients.Get(ctx, id)
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
@@ -294,9 +294,8 @@ func TestClientsGet_noClients(t *testing.T) {
 		Clients: hmacOpts,
 	})
 	_, err := client.Clients.Get(ctx, id)
-	const errMsg = "no client found in response; this is almost certainly a server error"
-	if err.Error() != errMsg {
-		t.Errorf("Expected error %v, got %v instead", errMsg, err)
+	if !errors.Is(err, ErrUnexpectedResponse) {
+		t.Errorf("Expected error %v, got %v instead", ErrUnexpectedResponse, err)
 	}
 }
 
@@ -319,7 +318,7 @@ func TestClientsGet_missingID(t *testing.T) {
 		Clients: hmacOpts,
 	})
 	_, err := client.Clients.Get(ctx, "")
-	if err != ErrClientRequestMissingID {
+	if !errors.Is(err, ErrClientRequestMissingID) {
 		t.Errorf("Expected error %v, got %v instead", ErrClientRequestMissingID, err)
 	}
 }
@@ -412,7 +411,7 @@ func TestClientsDelete_errors(t *testing.T) {
 			id := uuidOrFail(t)
 
 			err := client.Clients.Delete(ctx, id)
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
@@ -437,7 +436,7 @@ func TestClientsDelete_missingID(t *testing.T) {
 	})
 
 	err := client.Clients.Delete(ctx, "")
-	if err != ErrClientRequestMissingID {
+	if !errors.Is(err, ErrClientRequestMissingID) {
 		t.Errorf("Expected error %v, got %v instead", ErrClientRequestMissingID, err)
 	}
 }
@@ -540,7 +539,7 @@ func TestClientsResetSecret_errors(t *testing.T) {
 			id := uuidOrFail(t)
 
 			_, err := client.Clients.ResetSecret(ctx, id)
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
@@ -565,7 +564,7 @@ func TestClientsResetSecret_missingID(t *testing.T) {
 	})
 
 	_, err := client.Clients.ResetSecret(ctx, "")
-	if err != ErrClientRequestMissingID {
+	if !errors.Is(err, ErrClientRequestMissingID) {
 		t.Errorf("Expected error %v, got %v instead", ErrClientRequestMissingID, err)
 	}
 }
@@ -591,9 +590,8 @@ func TestClientsResetSecret_noClients(t *testing.T) {
 		Clients: hmacOpts,
 	})
 	_, err := client.Clients.ResetSecret(ctx, id)
-	const errMsg = "no client found in response; this is almost certainly a server error"
-	if err.Error() != errMsg {
-		t.Errorf("Expected error %v, got %v instead", errMsg, err)
+	if !errors.Is(err, ErrUnexpectedResponse) {
+		t.Errorf("Expected error %v, got %v instead", ErrUnexpectedResponse, err)
 	}
 }
 
@@ -604,7 +602,7 @@ func TestRedirectURIsCreate_success(t *testing.T) {
 
 	createdAt := time.Now().Round(time.Second)
 	createdAtStamp := createdAt.Format(time.RFC3339)
-	createdBy := "testuser"
+	createdBy := "testuseruriscreate"
 
 	id := uuidOrFail(t)
 	id2 := uuidOrFail(t)
@@ -686,7 +684,7 @@ func TestRedirectURIsCreate_missingID(t *testing.T) {
 	})
 
 	_, err := client.Clients.CreateRedirectURIs(ctx, "", []RedirectURI{})
-	if err != ErrClientRequestMissingID {
+	if !errors.Is(err, ErrClientRequestMissingID) {
 		t.Errorf("Expected error %v, got %v instead", ErrClientRequestMissingID, err)
 	}
 }
@@ -752,7 +750,7 @@ func TestRedirectURIsCreate_errors(t *testing.T) {
 				},
 			})
 
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
@@ -779,8 +777,9 @@ func TestRedirectURIsCreate_missingURI(t *testing.T) {
 	id := uuidOrFail(t)
 
 	_, err := client.Clients.CreateRedirectURIs(ctx, id, []RedirectURI{{}})
-	if _, ok := err.(ErrRedirectURIURIMissing); !ok {
-		t.Errorf("Expected error %T, got %v instead", ErrRedirectURIURIMissing{}, err)
+	var uriErr RedirectURIURIMissingError
+	if !errors.As(err, &uriErr) {
+		t.Errorf("Expected error %T, got %v instead", uriErr, err)
 	}
 }
 
@@ -803,14 +802,17 @@ func TestRedirectURIsCreate_conflictingID(t *testing.T) {
 
 	id := uuidOrFail(t)
 
-	_, err := client.Clients.CreateRedirectURIs(ctx, id, []RedirectURI{
-		{
-			URI:       "https://lockbox.dev/",
-			IsBaseURI: true,
-		},
-	})
-	if _, ok := err.(ErrRedirectURIIDConflict); !ok {
-		t.Errorf("Expected error %T, got %v instead", ErrRedirectURIIDConflict{}, err)
+	newURI := RedirectURI{
+		URI:       "https://lockbox.dev/",
+		IsBaseURI: true,
+	}
+	_, err := client.Clients.CreateRedirectURIs(ctx, id, []RedirectURI{newURI})
+	var uriErr RedirectURIIDConflictError
+	if !errors.As(err, &uriErr) {
+		t.Errorf("Expected error %T, got %v instead", RedirectURIIDConflictError{}, err)
+	}
+	if diff := cmp.Diff(newURI, RedirectURI(uriErr)); diff != "" {
+		t.Errorf("Unexpected diff (-wanted, +got): %s", diff)
 	}
 }
 
@@ -821,7 +823,7 @@ func TestRedirectURIsList_success(t *testing.T) {
 
 	createdAt := time.Now().Round(time.Second)
 	createdAtStamp := createdAt.Format(time.RFC3339)
-	createdBy := "testuser"
+	createdBy := "testuserurislist"
 
 	id := uuidOrFail(t)
 	id2 := uuidOrFail(t)
@@ -894,7 +896,7 @@ func TestRedirectURIsList_missingID(t *testing.T) {
 	})
 
 	_, err := client.Clients.ListRedirectURIs(ctx, "")
-	if err != ErrClientRequestMissingID {
+	if !errors.Is(err, ErrClientRequestMissingID) {
 		t.Errorf("Expected error %v, got %v instead", ErrClientRequestMissingID, err)
 	}
 }
@@ -948,7 +950,7 @@ func TestRedirectURIsList_errors(t *testing.T) {
 			})
 
 			_, err := client.Clients.ListRedirectURIs(ctx, clientUUID)
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
@@ -962,7 +964,7 @@ func TestRedirectURIsDelete_success(t *testing.T) {
 
 	createdAt := time.Now().Round(time.Second)
 	createdAtStamp := createdAt.Format(time.RFC3339)
-	createdBy := "testuser"
+	createdBy := "testuserurisdelete"
 
 	id := uuidOrFail(t)
 	clientID := uuidOrFail(t)
@@ -1014,7 +1016,7 @@ func TestRedirectURIsDelete_missingID(t *testing.T) {
 	clientID := uuidOrFail(t)
 
 	err := client.Clients.DeleteRedirectURI(ctx, clientID, "")
-	if err != ErrClientRequestMissingRedirectURIID {
+	if !errors.Is(err, ErrClientRequestMissingRedirectURIID) {
 		t.Errorf("Expected error %v, got %v instead", ErrClientRequestMissingRedirectURIID, err)
 	}
 }
@@ -1039,7 +1041,7 @@ func TestRedirectURIsDelete_missingURIID(t *testing.T) {
 	id := uuidOrFail(t)
 
 	err := client.Clients.DeleteRedirectURI(ctx, "", id)
-	if err != ErrClientRequestMissingID {
+	if !errors.Is(err, ErrClientRequestMissingID) {
 		t.Errorf("Expected error %v, got %v instead", ErrClientRequestMissingID, err)
 	}
 }
@@ -1099,7 +1101,7 @@ func TestRedirectURIsDelete_errors(t *testing.T) {
 			})
 
 			err := client.Clients.DeleteRedirectURI(ctx, clientUUID, id)
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})

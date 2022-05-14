@@ -16,8 +16,9 @@ import (
 	"sync"
 	"time"
 
-	"lockbox.dev/hmac"
 	"yall.in"
+
+	"lockbox.dev/hmac"
 
 	"github.com/hashicorp/go-cleanhttp"
 )
@@ -170,6 +171,9 @@ type loggingTransport struct {
 	mu     sync.RWMutex
 }
 
+// RoundTrip makes the http.Request using the http.RoundTripper associated with
+// the loggingTransport, logging the request and response if its active
+// property is set to true.
 func (l *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	var active bool
 	l.mu.RLock()
@@ -231,41 +235,41 @@ func NewClient(ctx context.Context, baseURL string, auth ...AuthMethod) (*Client
 	if err != nil {
 		return nil, fmt.Errorf("error parsing baseURL: %w", err)
 	}
-	c := &Client{
+	client := &Client{
 		client:      cleanhttp.DefaultPooledClient(),
 		baseURL:     base,
 		userAgentMu: new(sync.RWMutex),
 	}
 
-	c.transport = &loggingTransport{
+	client.transport = &loggingTransport{
 		log: yall.FromContext(ctx),
-		t:   c.client.Transport,
+		t:   client.client.Transport,
 	}
-	c.client.Transport = c.transport
+	client.client.Transport = client.transport
 	for _, method := range auth {
-		method.Apply(c)
+		method.Apply(client)
 	}
 
-	c.Accounts = &AccountsService{
+	client.Accounts = &AccountsService{
 		BasePath: accountsServiceDefaultBasePath,
-		client:   c,
+		client:   client,
 	}
 
-	c.Clients = &ClientsService{
+	client.Clients = &ClientsService{
 		BasePath: clientsServiceDefaultBasePath,
-		client:   c,
+		client:   client,
 	}
 
-	c.OAuth2 = &OAuth2Service{
+	client.OAuth2 = &OAuth2Service{
 		BasePath: oauth2ServiceDefaultBasePath,
-		client:   c,
+		client:   client,
 	}
 
-	c.Scopes = &ScopesService{
+	client.Scopes = &ScopesService{
 		BasePath: scopesServiceDefaultBasePath,
-		client:   c,
+		client:   client,
 	}
-	return c, nil
+	return client, nil
 }
 
 // RefreshTokens exchanges the token credentials configured on `c` for new
@@ -332,18 +336,18 @@ func (c *Client) NewRequest(ctx context.Context, method, path string, body io.Re
 }
 
 func (c *Client) buildUA() string {
-	ua := "go-lockbox/" + getVersion()
+	userAgent := "go-lockbox/" + getVersion()
 	c.userAgentMu.RLock()
 	uaAppend := strings.TrimSpace(strings.Join(c.userAgentAppend, " "))
 	uaPrepend := strings.TrimSpace(strings.Join(c.userAgentPrepend, " "))
 	c.userAgentMu.RUnlock()
 	if uaPrepend != "" {
-		ua = uaPrepend + " " + ua
+		userAgent = uaPrepend + " " + userAgent
 	}
 	if uaAppend != "" {
-		ua = ua + " " + uaAppend
+		userAgent = userAgent + " " + uaAppend
 	}
-	return ua
+	return userAgent
 }
 
 // AddClientCredentials adds the configured client credentials to `r`,
@@ -417,7 +421,7 @@ func (c *Client) MakeScopesHMACRequest(r *http.Request) error {
 	return c.makeHMACRequest(r, c.hmacs.scopes)
 }
 
-func (c *Client) makeHMACRequest(r *http.Request, auth HMACAuth) error {
+func (*Client) makeHMACRequest(r *http.Request, auth HMACAuth) error {
 	var buf *bytes.Buffer
 	if r.Body != nil {
 		body, err := ioutil.ReadAll(r.Body)
@@ -428,7 +432,7 @@ func (c *Client) makeHMACRequest(r *http.Request, auth HMACAuth) error {
 		r.Body = ioutil.NopCloser(buf)
 	}
 	signer := hmac.Signer{
-		Secret:  []byte(auth.Secret),
+		Secret:  auth.Secret,
 		MaxSkew: auth.MaxSkew,
 		OrgKey:  auth.OrgKey,
 		Key:     auth.Key,

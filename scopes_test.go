@@ -93,9 +93,8 @@ func TestScopesCreate_noScopes(t *testing.T) {
 		ClientPolicy: ScopesPolicyDefaultAllow,
 		IsDefault:    true,
 	})
-	const errMsg = "no scopes in the response; this is almost certainly a server error"
-	if err.Error() != errMsg {
-		t.Errorf("Expected error %v, got %v instead", errMsg, err)
+	if !errors.Is(err, ErrUnexpectedResponse) {
+		t.Errorf("Expected error %v, got %v instead", ErrUnexpectedResponse, err)
 	}
 }
 
@@ -280,7 +279,7 @@ func TestScopesGet_errors(t *testing.T) {
 			})
 
 			_, err := client.Scopes.Get(ctx, "https://test.lockbox.dev/scopes/basic")
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
@@ -306,9 +305,8 @@ func TestScopesGet_noScopes(t *testing.T) {
 		Scopes: hmacOpts,
 	})
 	_, err := client.Scopes.Get(ctx, "https://test.lockbox.dev/scopes/basic")
-	const errMsg = "no scopes in the response; this is almost certainly a server error"
-	if err.Error() != errMsg {
-		t.Errorf("Expected error %v, got %v instead", errMsg, err)
+	if !errors.Is(err, ErrUnexpectedResponse) {
+		t.Errorf("Expected error %v, got %v instead", ErrUnexpectedResponse, err)
 	}
 }
 
@@ -331,7 +329,7 @@ func TestScopesGet_missingID(t *testing.T) {
 		Scopes: hmacOpts,
 	})
 	_, err := client.Scopes.Get(ctx, "")
-	if err != ErrScopeRequestMissingID {
+	if !errors.Is(err, ErrScopeRequestMissingID) {
 		t.Errorf("Expected error %v, got %v instead", ErrScopeRequestMissingID, err)
 	}
 }
@@ -547,9 +545,8 @@ func TestScopesUpdate_noScopes(t *testing.T) {
 
 	_, err := client.Scopes.Update(ctx, "https://test.lockbox.dev/basic/scope", ScopeChange{}.
 		SetIsDefault(true))
-	const errMsg = "no scopes in the response; this is almost certainly a server error"
-	if err.Error() != errMsg {
-		t.Errorf("Expected error %v, got %v instead", errMsg, err)
+	if !errors.Is(err, ErrUnexpectedResponse) {
+		t.Errorf("Expected error %v, got %v instead", ErrUnexpectedResponse, err)
 	}
 }
 
@@ -643,7 +640,7 @@ func TestScopesUpdate_missingID(t *testing.T) {
 	})
 
 	_, err := client.Scopes.Update(ctx, "", ScopeChange{}.SetIsDefault(true))
-	if err != ErrScopeRequestMissingID {
+	if !errors.Is(err, ErrScopeRequestMissingID) {
 		t.Errorf("Expected error %v, got %v instead", ErrScopeRequestMissingID, err)
 	}
 }
@@ -730,7 +727,7 @@ func TestScopesDelete_errors(t *testing.T) {
 			})
 
 			err := client.Scopes.Delete(ctx, uuidOrFail(t))
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
@@ -757,7 +754,7 @@ func TestScopesDelete_missingID(t *testing.T) {
 	})
 
 	err := client.Scopes.Delete(ctx, "")
-	if err != ErrScopeRequestMissingID {
+	if !errors.Is(err, ErrScopeRequestMissingID) {
 		t.Errorf("Expected error %v, got %v instead", ErrScopeRequestMissingID, err)
 	}
 }
@@ -876,7 +873,7 @@ func TestScopesListDefault_errors(t *testing.T) {
 			})
 
 			_, err := client.Scopes.ListDefault(ctx)
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
@@ -1062,7 +1059,7 @@ func TestScopesGetByIDs_errors(t *testing.T) {
 			})
 
 			_, err := client.Scopes.GetByIDs(ctx, []string{"https://test.lockbox.dev/scopes/basic"})
-			if err != test.err {
+			if !errors.Is(err, test.err) {
 				t.Errorf("Expected error %v, got %v instead", test.err, err)
 			}
 		})
@@ -1089,7 +1086,7 @@ func TestScopesGetByIDs_missingIDs(t *testing.T) {
 	})
 
 	_, err := client.Scopes.GetByIDs(ctx, nil)
-	if err != ErrScopeRequestMissingID {
+	if !errors.Is(err, ErrScopeRequestMissingID) {
 		t.Errorf("Expected error %v, got %v instead", ErrScopeRequestMissingID, err)
 	}
 }
