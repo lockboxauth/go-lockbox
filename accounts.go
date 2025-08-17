@@ -50,9 +50,9 @@ type Account struct {
 	ID             string    `json:"id,omitempty"`
 	ProfileID      string    `json:"profileID,omitempty"`
 	IsRegistration bool      `json:"isRegistration"`
-	CreatedAt      time.Time `json:"createdAt,omitempty"`
-	LastSeenAt     time.Time `json:"lastSeenAt,omitempty"`
-	LastUsedAt     time.Time `json:"lastUsedAt,omitempty"`
+	CreatedAt      time.Time `json:"createdAt"`
+	LastSeenAt     time.Time `json:"lastSeenAt"`
+	LastUsedAt     time.Time `json:"lastUsedAt"`
 }
 
 // AccountsService is the accounts service. Set the BasePath to modify where
@@ -89,7 +89,7 @@ func (a AccountsService) Create(ctx context.Context, account Account) (Account, 
 		}
 	}
 	jsonRequest(req)
-	res, err := a.client.Do(req)
+	res, err := a.client.Do(req) //nolint:bodyclose // we close the response body in responseFromBody
 	if err != nil {
 		return Account{}, fmt.Errorf("error making request: %w", err)
 	}
@@ -159,7 +159,7 @@ func (a AccountsService) Get(ctx context.Context, id string) (Account, error) {
 		return Account{}, err
 	}
 	jsonRequest(req)
-	res, err := a.client.Do(req)
+	res, err := a.client.Do(req) //nolint:bodyclose // we close the response body in responseFromBody
 	if err != nil {
 		return Account{}, fmt.Errorf("error making request: %w", err)
 	}
@@ -222,7 +222,7 @@ func (a AccountsService) ListByProfileID(ctx context.Context, profileID string) 
 		return nil, err
 	}
 	jsonRequest(req)
-	res, err := a.client.Do(req)
+	res, err := a.client.Do(req) //nolint:bodyclose // we close the response body in responseFromBody
 	if err != nil {
 		return nil, fmt.Errorf("error making request: %w", err)
 	}
@@ -279,7 +279,7 @@ func (a AccountsService) Delete(ctx context.Context, id string) error {
 		return err
 	}
 	jsonRequest(req)
-	res, err := a.client.Do(req)
+	res, err := a.client.Do(req) //nolint:bodyclose // we close the response body in responseFromBody
 	if err != nil {
 		return fmt.Errorf("error making request: %w", err)
 	}

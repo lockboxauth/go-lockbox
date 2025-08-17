@@ -4,11 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
-	"net/url"
 	"regexp"
-	"strconv"
 
 	"github.com/hashicorp/go-multierror"
 )
@@ -77,7 +75,7 @@ func responseFromBody(resp *http.Response) (res Response, returnErr error) {
 			returnErr = multierror.Append(returnErr, fmt.Errorf("error closing response body: %w", err))
 		}
 	}()
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return Response{}, fmt.Errorf("error reading response body: %w", err)
 	}
@@ -87,46 +85,6 @@ func responseFromBody(resp *http.Response) (res Response, returnErr error) {
 		return Response{}, fmt.Errorf("error parsing response body: %w", err)
 	}
 	return res, nil
-}
-
-func oauthResponse(resp *http.Response) (res OAuth2Response, returnErr error) {
-	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
-			returnErr = multierror.Append(returnErr, fmt.Errorf("error closing response body: %w", err))
-		}
-	}()
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return OAuth2Response{}, fmt.Errorf("error reading response body: %w", err)
-	}
-	res = OAuth2Response{}
-	err = json.Unmarshal(respBody, &res)
-	if err != nil {
-		return res, fmt.Errorf("error parsing response body %q: %w", string(respBody), err)
-	}
-	return res, nil
-}
-
-// OAuth2ResponseFromParams decodes the URL parameters passed in and returns an
-// OAuth2Response from their values.
-func OAuth2ResponseFromParams(vals url.Values) (OAuth2Response, error) {
-	var expiresIn int
-	if e := vals.Get("expires_in"); e != "" {
-		eint, err := strconv.Atoi(e)
-		if err != nil {
-			return OAuth2Response{}, fmt.Errorf("error parsing expires_in as integer: %w", err)
-		}
-		expiresIn = eint
-	}
-	return OAuth2Response{
-		AccessToken:  vals.Get("access_token"),
-		TokenType:    vals.Get("token_type"),
-		ExpiresIn:    expiresIn,
-		RefreshToken: vals.Get("refresh_token"),
-		Scope:        vals.Get("scope"),
-		Error:        vals.Get("error"),
-	}, nil
 }
 
 // RequestError describes an error that an HTTP request encountered, hopefully

@@ -25,7 +25,7 @@ func TestAccountsCreate_register(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		checkURL(t, r, "/accounts/v1")
 		checkMethod(t, r, http.MethodPost)
-		checkJSONBody(t, r, `{"id": "test@lockbox.dev", "isRegistration": true, "createdAt": "0001-01-01T00:00:00Z", "lastSeenAt": "0001-01-01T00:00:00Z", "lastUsedAt": "0001-01-01T00:00:00Z"}`)
+		checkJSONBody(ctx, t, r, `{"id": "test@lockbox.dev", "isRegistration": true, "createdAt": "0001-01-01T00:00:00Z", "lastSeenAt": "0001-01-01T00:00:00Z", "lastUsedAt": "0001-01-01T00:00:00Z"}`)
 
 		w.WriteHeader(http.StatusOK)
 		mustWrite(t, w, []byte(`{"accounts": [{"id": "test@lockbox.dev", "isRegistration": true, "createdAt": "`+timestamp+`", "lastSeenAt": "`+timestamp+`", "lastUsedAt": "`+timestamp+`", "profileID": "b9d7ed67-330b-481d-ad50-2208fe30b947"}]}`))
@@ -65,7 +65,7 @@ func TestAccountsCreate_addAccount(t *testing.T) {
 		checkURL(t, r, "/accounts/v1")
 		checkMethod(t, r, http.MethodPost)
 		checkBearerToken(t, r, "test-access-add")
-		checkJSONBody(t, r, `{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "0001-01-01T00:00:00Z", "lastSeenAt": "0001-01-01T00:00:00Z", "lastUsedAt": "0001-01-01T00:00:00Z"}`)
+		checkJSONBody(ctx, t, r, `{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "0001-01-01T00:00:00Z", "lastSeenAt": "0001-01-01T00:00:00Z", "lastUsedAt": "0001-01-01T00:00:00Z"}`)
 
 		w.WriteHeader(http.StatusOK)
 		mustWrite(t, w, []byte(`{"accounts": [{"id": "test@lockbox.dev", "isRegistration": false, "profileID": "testing123", "createdAt": "`+timestamp+`", "lastSeenAt": "`+timestamp+`", "lastUsedAt": "`+timestamp+`"}]}`))
@@ -155,7 +155,6 @@ func TestAccountsCreate_errors(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			log := yall.New(testinglog.New(t, yall.Debug))
@@ -250,7 +249,6 @@ func TestAccountsGet_errors(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			log := yall.New(testinglog.New(t, yall.Debug))
@@ -417,7 +415,6 @@ func TestAccountsListByProfileID_errors(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			log := yall.New(testinglog.New(t, yall.Debug))
@@ -517,7 +514,6 @@ func TestAccountsDelete_errors(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			log := yall.New(testinglog.New(t, yall.Debug))

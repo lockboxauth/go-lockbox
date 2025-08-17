@@ -1,24 +1,17 @@
 package lockbox
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
 	"sync"
-	"time"
 
 	"yall.in"
-
-	"lockbox.dev/hmac"
 
 	"github.com/hashicorp/go-cleanhttp"
 )
@@ -31,63 +24,6 @@ var (
 	// ErrNoRefreshTokenSet is returned when the Client tries to use a
 	// refresh token but is not configured with one
 	ErrNoRefreshTokenSet = errors.New("no refresh token set")
-
-	// ErrNoClientIDSet is returned when the Client tries to use a client
-	// ID but is not configured with one
-	ErrNoClientIDSet = errors.New("no client ID set")
-
-	// ErrNoClientSecretSet is returned when the Client tries to use a
-	// client secret but is not configured with one
-	ErrNoClientSecretSet = errors.New("no client secret set")
-
-	// ErrNoClientRedirectURISet is returned when the Client tries to use a
-	// redirect URI but is not configured with one
-	ErrNoClientRedirectURISet = errors.New("no client redirect URI set")
-
-	// ErrNoClientsHMACSecretSet is returned when the Client tries to make
-	// an HMAC request to the clients service but is not configured with an
-	// HMAC secret
-	ErrNoClientsHMACSecretSet = errors.New("no HMAC secret for the clients service set")
-
-	// ErrNoClientsHMACMaxSkewSet is returned when the Client tries to make
-	// an HMAC request to the clients service but is not configured with an
-	// HMAC max skew
-	ErrNoClientsHMACMaxSkewSet = errors.New("no HMAC max skew for the clients service set")
-
-	// ErrNoClientsHMACOrgKeySet is returned when the Client tries to make
-	// an HMAC request to the clients service but is not configured with an
-	// HMAC org key
-	ErrNoClientsHMACOrgKeySet = errors.New("no HMAC org key for the clients service set")
-
-	// ErrNoClientsHMACKeySet is returned when the Client tries to make an
-	// HMAC request to the clients service but is not configured with an
-	// HMAC key
-	ErrNoClientsHMACKeySet = errors.New("no HMAC key for the clients service set")
-
-	// ErrNoScopesHMACSecretSet is returned when the Client tries to make
-	// an HMAC request to the scopes service but is not configured with an
-	// HMAC secret
-	ErrNoScopesHMACSecretSet = errors.New("no HMAC secret for the scopes service set")
-
-	// ErrNoScopesHMACMaxSkewSet is returned when the Client tries to make
-	// an HMAC request to the scopes service but is not configured with an
-	// HMAC max skew
-	ErrNoScopesHMACMaxSkewSet = errors.New("no HMAC max skew for the scopes service set")
-
-	// ErrNoScopesHMACOrgKeySet is returned when the Client tries to make
-	// an HMAC request to the scopes service but is not configured with an
-	// HMAC org key
-	ErrNoScopesHMACOrgKeySet = errors.New("no HMAC org key for the scopes service set")
-
-	// ErrNoScopesHMACKeySet is returned when the Client tries to make an
-	// HMAC request to the scopes service but is not configured with an
-	// HMAC key
-	ErrNoScopesHMACKeySet = errors.New("no HMAC key for the scopes service set")
-
-	// ErrBothClientSecretAndRedirectURISet is return when the Client tries
-	// to make a request using client credentials and both the redirect URI
-	// and client secret are set
-	ErrBothClientSecretAndRedirectURISet = errors.New("both client secret and redirect URI set")
 )
 
 // Client is an HTTP client that can make requests against Lockbox's various
@@ -100,38 +36,11 @@ type Client struct {
 	userAgentAppend  []string
 	userAgentMu      *sync.RWMutex
 
-	clientID          string
-	clientSecret      string
-	clientRedirectURI string
-
 	accessToken  string
 	refreshToken string
 	tokenMu      sync.RWMutex
 
-	hmacs hmacAuths
-
 	Accounts *AccountsService
-	Clients  *ClientsService
-	OAuth2   *OAuth2Service
-	Scopes   *ScopesService
-}
-
-type hmacAuths struct {
-	clients HMACAuth
-	scopes  HMACAuth
-}
-
-// HMACAuth contains all the information necessary to authenticate against an
-// HMAC-secured service, like the clients service.
-type HMACAuth struct {
-	// MaxSkew is the maximum amount of clock skew to accept
-	MaxSkew time.Duration
-	// OrgKey is the organization key the service is using
-	OrgKey string
-	// Key is the key ID the service is using
-	Key string
-	// Secret is the HMAC secret the service is using
-	Secret []byte
 }
 
 // AuthMethod is a way of authenticating the Client. When constructing a
@@ -153,15 +62,6 @@ type AuthTokens struct {
 func (a AuthTokens) Apply(c *Client) {
 	c.accessToken = a.Access
 	c.refreshToken = a.Refresh
-}
-
-// ClientCredentials configures the client with credentials necessary to
-// authenticate against services that use those credentials, like the oauth2
-// service.
-type ClientCredentials struct {
-	ID          string
-	Secret      string
-	RedirectURI string
 }
 
 type loggingTransport struct {
@@ -205,27 +105,6 @@ func (l *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	return resp, nil
 }
 
-// Apply configures the Client `c` with the client ID, client secret, and
-// redirect URI set on `creds`.
-func (creds ClientCredentials) Apply(c *Client) {
-	c.clientID = creds.ID
-	c.clientSecret = creds.Secret
-	c.clientRedirectURI = creds.RedirectURI
-}
-
-// HMACCredentials configures the Client with credentials necessary to
-// authenticate against HMAC-secured endpoints, like the clients service.
-type HMACCredentials struct {
-	Clients HMACAuth
-	Scopes  HMACAuth
-}
-
-// Apply configures the Client `c` with the HMAC credentials set in `h`.
-func (h HMACCredentials) Apply(c *Client) {
-	c.hmacs.clients = h.Clients
-	c.hmacs.scopes = h.Scopes
-}
-
 // NewClient returns a new client capable of interacting with Lockbox services.
 // The baseURL specified should point to the URL that lockbox-apid is serving
 // at. Any number of AuthMethods can be passed to configure the client,
@@ -255,37 +134,18 @@ func NewClient(ctx context.Context, baseURL string, auth ...AuthMethod) (*Client
 		client:   client,
 	}
 
-	client.Clients = &ClientsService{
-		BasePath: clientsServiceDefaultBasePath,
-		client:   client,
-	}
-
-	client.OAuth2 = &OAuth2Service{
-		BasePath: oauth2ServiceDefaultBasePath,
-		client:   client,
-	}
-
-	client.Scopes = &ScopesService{
-		BasePath: scopesServiceDefaultBasePath,
-		client:   client,
-	}
 	return client, nil
 }
 
 // RefreshTokens exchanges the token credentials configured on `c` for new
 // token credentials, and configures `c` with the new token credentials.
-func (c *Client) RefreshTokens(ctx context.Context, scopes []string) error {
+func (c *Client) RefreshTokens(_ context.Context) error {
 	c.tokenMu.Lock()
 	defer c.tokenMu.Unlock()
 	if c.refreshToken == "" {
 		return ErrNoRefreshTokenSet
 	}
-	resp, err := c.OAuth2.ExchangeRefreshToken(ctx, c.refreshToken, scopes)
-	if err != nil {
-		return fmt.Errorf("error exchanging refresh token: %w", err)
-	}
-	c.accessToken = resp.AccessToken
-	c.refreshToken = resp.RefreshToken
+	// TODO: refresh tokens
 	return nil
 }
 
@@ -350,29 +210,6 @@ func (c *Client) buildUA() string {
 	return userAgent
 }
 
-// AddClientCredentials adds the configured client credentials to `r`,
-// authenticating the request. This is usually used for OAuth2 requests.
-func (c *Client) AddClientCredentials(r *http.Request) error {
-	if c.clientID == "" {
-		return ErrNoClientIDSet
-	}
-	if c.clientSecret == "" && c.clientRedirectURI == "" {
-		return ErrNoClientSecretSet
-	}
-	if c.clientSecret != "" && c.clientRedirectURI != "" {
-		return ErrBothClientSecretAndRedirectURISet
-	}
-	if c.clientSecret != "" {
-		r.SetBasicAuth(c.clientID, c.clientSecret)
-		return nil
-	}
-	values := r.URL.Query()
-	values.Set("client_id", c.clientID)
-	values.Set("redirect_uri", c.clientRedirectURI)
-	r.URL.RawQuery = values.Encode()
-	return nil
-}
-
 // AddTokenCredentials adds the configured tokens to `r` as credentials,
 // authenticating the request.
 func (c *Client) AddTokenCredentials(r *http.Request) error {
@@ -382,69 +219,6 @@ func (c *Client) AddTokenCredentials(r *http.Request) error {
 		return ErrNoAccessTokenSet
 	}
 	r.Header.Set("Authorization", "Bearer "+c.accessToken)
-	return nil
-}
-
-// MakeClientsHMACRequest signs an *http.Request so it can be executed against
-// the Clients service.
-func (c *Client) MakeClientsHMACRequest(r *http.Request) error {
-	if len(c.hmacs.clients.Secret) == 0 {
-		return ErrNoClientsHMACSecretSet
-	}
-	if c.hmacs.clients.MaxSkew == 0 {
-		return ErrNoClientsHMACMaxSkewSet
-	}
-	if c.hmacs.clients.OrgKey == "" {
-		return ErrNoClientsHMACOrgKeySet
-	}
-	if c.hmacs.clients.Key == "" {
-		return ErrNoClientsHMACKeySet
-	}
-	return c.makeHMACRequest(r, c.hmacs.clients)
-}
-
-// MakeScopesHMACRequest signs an *http.Request so it can be executed against
-// the Scopes service.
-func (c *Client) MakeScopesHMACRequest(r *http.Request) error {
-	if len(c.hmacs.scopes.Secret) == 0 {
-		return ErrNoScopesHMACSecretSet
-	}
-	if c.hmacs.scopes.MaxSkew == 0 {
-		return ErrNoScopesHMACMaxSkewSet
-	}
-	if c.hmacs.scopes.OrgKey == "" {
-		return ErrNoScopesHMACOrgKeySet
-	}
-	if c.hmacs.scopes.Key == "" {
-		return ErrNoScopesHMACKeySet
-	}
-	return c.makeHMACRequest(r, c.hmacs.scopes)
-}
-
-func (*Client) makeHMACRequest(r *http.Request, auth HMACAuth) error {
-	var buf *bytes.Buffer
-	if r.Body != nil {
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			return fmt.Errorf("error reading request body: %w", err)
-		}
-		buf = bytes.NewBuffer(body)
-		r.Body = ioutil.NopCloser(buf)
-	}
-	signer := hmac.Signer{
-		Secret:  auth.Secret,
-		MaxSkew: auth.MaxSkew,
-		OrgKey:  auth.OrgKey,
-		Key:     auth.Key,
-	}
-	var content []byte
-	if buf != nil {
-		content = buf.Bytes()
-	}
-	r.Header.Set("Date", time.Now().Format(time.RFC1123))
-	r.Header.Set("Content-SHA256", base64.StdEncoding.EncodeToString(sha256.New().Sum(content)))
-	sig := signer.Sign(r)
-	r.Header.Set("Authorization", fmt.Sprintf("%s v1 %s:%s", signer.OrgKey, signer.Key, sig))
 	return nil
 }
 
