@@ -66,11 +66,8 @@ var (
 // Response is the standard response format we get back from every service,
 // except the oauth2 service, which follows the standard.
 type Response struct {
-	Accounts     []Account     `json:"accounts,omitempty"`
-	Clients      []APIClient   `json:"clients,omitempty"`
-	RedirectURIs []RedirectURI `json:"redirectURIs,omitempty"`
-	Scopes       []Scope       `json:"scopes,omitempty"`
-	Errors       RequestErrors `json:"errors,omitempty"`
+	Accounts []Account     `json:"accounts,omitempty"`
+	Errors   RequestErrors `json:"errors,omitempty"`
 }
 
 func responseFromBody(resp *http.Response) (res Response, returnErr error) {
